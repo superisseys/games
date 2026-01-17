@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #0a0a2e 0%, #16213e 100%);
+            background: #000000;
             overflow: hidden;
             touch-action: none;
             position: fixed;
@@ -38,6 +38,7 @@
             justify-content: center;
             align-items: center;
             position: relative;
+            background: #000000;
         }
 
         #ui {
@@ -73,7 +74,7 @@
             transform: translateX(-50%);
             width: 100%;
             max-width: 500px;
-            height: 180px;
+            height: 80px;
             pointer-events: none;
             z-index: 5;
         }
@@ -95,12 +96,6 @@
             bottom: 0;
             height: 80px;
             background: rgba(0, 100, 255, 0.1);
-        }
-
-        #spinZone {
-            bottom: 80px;
-            height: 100px;
-            background: rgba(0, 255, 255, 0.1);
         }
 
         #energyBar {
@@ -220,14 +215,13 @@
         </div>
 
         <div id="controlZones">
-            <div class="controlZone" id="spinZone">回転エリア</div>
             <div class="controlZone" id="moveZone">移動エリア</div>
         </div>
 
         <div id="startScreen">
             <h1>⚡ スピンシューター ⚡</h1>
             <div class="instruction">📍 下部エリア：左右に移動</div>
-            <div class="instruction">🔄 中央エリア：スワイプして回転充電</div>
+            <div class="instruction">🔄 上部エリア：スワイプして回転充電</div>
             <p>回転量でパワーアップ！</p>
             <p>Lv3なら硬い敵も一撃！</p>
             <p>15秒間で高スコアを目指そう！</p>
@@ -315,10 +309,10 @@
             };
         }
 
-        // 回転エリアの境界（移動エリアの上）
+        // 回転エリアの境界（画面上部～移動エリアの上まで）
         function getSpinZoneBounds() {
             return {
-                top: canvasRect.bottom - 180,
+                top: 0,
                 bottom: canvasRect.bottom - 80
             };
         }
