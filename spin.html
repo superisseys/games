@@ -37,6 +37,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
 
         #ui {
@@ -65,16 +66,53 @@
             z-index: 10;
         }
 
+        #controlZones {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 500px;
+            height: 180px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .controlZone {
+            position: absolute;
+            width: 100%;
+            border: 2px dashed rgba(0, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+        }
+
+        #moveZone {
+            bottom: 0;
+            height: 80px;
+            background: rgba(0, 100, 255, 0.1);
+        }
+
+        #spinZone {
+            bottom: 80px;
+            height: 100px;
+            background: rgba(0, 255, 255, 0.1);
+        }
+
         #energyBar {
             position: absolute;
-            bottom: 120px;
+            bottom: 190px;
             left: 50%;
             transform: translateX(-50%);
             width: 200px;
-            height: 20px;
+            height: 25px;
             background: rgba(0, 0, 0, 0.5);
             border: 2px solid #00ffff;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
             z-index: 10;
         }
@@ -82,9 +120,21 @@
         #energyFill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #00ff00 0%, #00ffff 100%);
+            background: linear-gradient(90deg, #00ff00 0%, #00ffff 50%, #ff00ff 100%);
             transition: width 0.1s;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        #powerLevel {
+            position: absolute;
+            bottom: 220px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            z-index: 10;
         }
 
         #startScreen, #gameOverScreen {
@@ -143,6 +193,14 @@
         .hidden {
             display: none !important;
         }
+
+        .instruction {
+            background: rgba(0, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 8px;
+            margin: 5px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -153,6 +211,7 @@
         </div>
         
         <div id="timer">15.0</div>
+        <div id="powerLevel">パワー: Lv1</div>
         
         <canvas id="gameCanvas"></canvas>
         
@@ -160,11 +219,18 @@
             <div id="energyFill"></div>
         </div>
 
+        <div id="controlZones">
+            <div class="controlZone" id="spinZone">回転エリア</div>
+            <div class="controlZone" id="moveZone">移動エリア</div>
+        </div>
+
         <div id="startScreen">
             <h1>⚡ スピンシューター ⚡</h1>
-            <p>画面を左右にスワイプして移動！</p>
-            <p>回転させてエネルギーを溜めよう</p>
-            <p>15秒間でできるだけ多くの敵を倒そう！</p>
+            <div class="instruction">📍 下部エリア：左右に移動</div>
+            <div class="instruction">🔄 中央エリア：スワイプして回転充電</div>
+            <p>回転量でパワーアップ！</p>
+            <p>Lv3なら硬い敵も一撃！</p>
+            <p>15秒間で高スコアを目指そう！</p>
             <button id="startBtn">ゲーム開始</button>
         </div>
 
@@ -188,13 +254,16 @@
         const energyFill = document.getElementById('energyFill');
         const finalScoreDisplay = document.getElementById('finalScore');
         const timerDisplay = document.getElementById('timer');
+        const powerLevelDisplay = document.getElementById('powerLevel');
 
         // キャンバスサイズ設定
+        let canvasRect = null;
         function resizeCanvas() {
             const maxWidth = Math.min(window.innerWidth, 500);
-            const maxHeight = window.innerHeight - 180;
+            const maxHeight = window.innerHeight - 250;
             canvas.width = maxWidth;
             canvas.height = maxHeight;
+            canvasRect = canvas.getBoundingClientRect();
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
@@ -206,9 +275,9 @@
         let energy = 0;
         const maxEnergy = 100;
         let rotation = 0;
-        let lastTouchX = 0;
         let isShooting = false;
         let gameTime = 15;
+        let powerLevel = 1;
 
         // プレイヤー（発電機）
         let generator = {
@@ -235,68 +304,131 @@
         let enemiesPerWave = 5;
         let enemiesSpawned = 0;
 
-        // タッチイベント
-        let touchStartX = 0;
-        let lastRotationSpeed = 0;
-        let touchStartTime = 0;
+        // タッチ管理（マルチタッチ対応）
+        let activeTouches = new Map();
+
+        // 移動エリアの境界（キャンバス下部）
+        function getMoveZoneBounds() {
+            return {
+                top: canvasRect.bottom - 80,
+                bottom: canvasRect.bottom
+            };
+        }
+
+        // 回転エリアの境界（移動エリアの上）
+        function getSpinZoneBounds() {
+            return {
+                top: canvasRect.bottom - 180,
+                bottom: canvasRect.bottom - 80
+            };
+        }
 
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            touchStartX = e.touches[0].clientX;
-            lastTouchX = touchStartX;
-            touchStartTime = Date.now();
+            if (!gameRunning) return;
+
+            Array.from(e.changedTouches).forEach(touch => {
+                const touchY = touch.clientY;
+                const moveZone = getMoveZoneBounds();
+                const spinZone = getSpinZoneBounds();
+
+                if (touchY >= moveZone.top && touchY <= moveZone.bottom) {
+                    // 移動エリア
+                    activeTouches.set(touch.identifier, {
+                        type: 'move',
+                        startX: touch.clientX,
+                        lastX: touch.clientX
+                    });
+                } else if (touchY >= spinZone.top && touchY <= spinZone.bottom) {
+                    // 回転エリア
+                    activeTouches.set(touch.identifier, {
+                        type: 'spin',
+                        startX: touch.clientX,
+                        lastX: touch.clientX,
+                        rotationAmount: 0
+                    });
+                }
+            });
         }, { passive: false });
 
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             if (!gameRunning) return;
-            
-            const touchX = e.touches[0].clientX;
-            const deltaX = touchX - lastTouchX;
-            
-            // プレイヤーを移動
-            const rect = canvas.getBoundingClientRect();
-            const canvasX = (touchX - rect.left) * (canvas.width / rect.width);
-            generator.targetX = Math.max(generator.radius, Math.min(canvas.width - generator.radius, canvasX));
-            
-            // 回転速度に応じてエネルギー増加
-            const rotationSpeed = Math.abs(deltaX);
-            rotation += deltaX * 0.1;
-            
-            if (rotationSpeed > 1) {
-                energy = Math.min(energy + rotationSpeed * 0.3, maxEnergy);
-                lastRotationSpeed = rotationSpeed;
-            }
-            
-            lastTouchX = touchX;
+
+            Array.from(e.changedTouches).forEach(touch => {
+                const touchData = activeTouches.get(touch.identifier);
+                if (!touchData) return;
+
+                if (touchData.type === 'move') {
+                    // 移動処理
+                    const canvasX = (touch.clientX - canvasRect.left) * (canvas.width / canvasRect.width);
+                    generator.targetX = Math.max(generator.radius, Math.min(canvas.width - generator.radius, canvasX));
+                    touchData.lastX = touch.clientX;
+                } else if (touchData.type === 'spin') {
+                    // 回転処理
+                    const deltaX = touch.clientX - touchData.lastX;
+                    const rotationSpeed = Math.abs(deltaX);
+                    
+                    rotation += deltaX * 0.15;
+                    touchData.rotationAmount += rotationSpeed;
+                    
+                    if (rotationSpeed > 1) {
+                        energy = Math.min(energy + rotationSpeed * 0.4, maxEnergy);
+                    }
+                    
+                    touchData.lastX = touch.clientX;
+                }
+            });
         }, { passive: false });
 
         canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
             if (!gameRunning) return;
-            
-            const touchDuration = Date.now() - touchStartTime;
-            
-            // エネルギーが十分なら発射
-            if (energy >= 50 && !isShooting) {
-                shootBeam();
-                energy = 0;
-            }
-            
-            lastRotationSpeed = 0;
+
+            Array.from(e.changedTouches).forEach(touch => {
+                const touchData = activeTouches.get(touch.identifier);
+                if (!touchData) return;
+
+                if (touchData.type === 'spin') {
+                    // 回転量に応じてパワーレベル決定
+                    if (touchData.rotationAmount > 200) {
+                        powerLevel = 3; // 超強力
+                    } else if (touchData.rotationAmount > 100) {
+                        powerLevel = 2; // 強力
+                    } else {
+                        powerLevel = 1; // 通常
+                    }
+
+                    // エネルギーが十分なら発射
+                    if (energy >= 50 && !isShooting) {
+                        shootBeam();
+                        energy = 0;
+                    }
+                }
+
+                activeTouches.delete(touch.identifier);
+            });
         }, { passive: false });
 
         // ビーム発射
         function shootBeam() {
             isShooting = true;
+            
+            const beamWidth = 10 + (powerLevel - 1) * 5;
+            const beamColor = powerLevel === 3 ? '#ff00ff' : powerLevel === 2 ? '#00ffff' : '#00ff88';
+            
             beams.push({
                 x: generator.x,
                 y: generator.y - generator.radius,
-                width: 10,
-                height: 30,
+                width: beamWidth,
+                height: 30 + powerLevel * 5,
                 speed: 15,
-                damage: 1
+                damage: powerLevel,
+                color: beamColor,
+                powerLevel: powerLevel
             });
+            
+            powerLevelDisplay.textContent = `パワー: Lv${powerLevel}`;
             
             setTimeout(() => {
                 isShooting = false;
@@ -315,6 +447,7 @@
                 height: 30,
                 type: type,
                 hp: 1,
+                maxHp: 1,
                 speed: 1.5,
                 color: '#ff0000'
             };
@@ -326,6 +459,7 @@
                 enemy.height = 25;
             } else if (type === 'tank') {
                 enemy.hp = 3;
+                enemy.maxHp = 3;
                 enemy.speed = 1;
                 enemy.color = '#ff8800';
                 enemy.width = 40;
@@ -350,10 +484,21 @@
             // エネルギーグロー
             if (energy > 20) {
                 const glowIntensity = energy / maxEnergy;
-                ctx.shadowBlur = 20 * glowIntensity;
-                ctx.shadowColor = '#00ffff';
-                ctx.strokeStyle = `rgba(0, 255, 255, ${glowIntensity})`;
-                ctx.lineWidth = 3;
+                ctx.shadowBlur = 25 * glowIntensity;
+                
+                // パワーレベルに応じて色変更
+                if (energy > 80) {
+                    ctx.shadowColor = '#ff00ff';
+                    ctx.strokeStyle = `rgba(255, 0, 255, ${glowIntensity})`;
+                } else if (energy > 50) {
+                    ctx.shadowColor = '#00ffff';
+                    ctx.strokeStyle = `rgba(0, 255, 255, ${glowIntensity})`;
+                } else {
+                    ctx.shadowColor = '#00ff88';
+                    ctx.strokeStyle = `rgba(0, 255, 136, ${glowIntensity})`;
+                }
+                
+                ctx.lineWidth = 4;
                 ctx.beginPath();
                 ctx.arc(0, 0, generator.radius + 5, 0, Math.PI * 2);
                 ctx.stroke();
@@ -386,22 +531,31 @@
             ctx.restore();
 
             // エネルギー自然減衰
-            if (lastRotationSpeed < 0.1) {
-                energy = Math.max(0, energy - 0.2);
+            const hasSpinTouch = Array.from(activeTouches.values()).some(t => t.type === 'spin');
+            if (!hasSpinTouch) {
+                energy = Math.max(0, energy - 0.3);
             }
         }
 
         function drawBeams() {
             beams.forEach(beam => {
-                ctx.fillStyle = '#00ffff';
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = '#00ffff';
+                ctx.fillStyle = beam.color;
+                ctx.shadowBlur = 20 + beam.powerLevel * 5;
+                ctx.shadowColor = beam.color;
                 
                 // ビームの輝き効果
                 ctx.fillRect(beam.x - beam.width / 2, beam.y, beam.width, beam.height);
                 
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(beam.x - beam.width / 4, beam.y, beam.width / 2, beam.height);
+                
+                // パワーレベル3は追加エフェクト
+                if (beam.powerLevel === 3) {
+                    ctx.fillStyle = beam.color;
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillRect(beam.x - beam.width, beam.y, beam.width * 2, beam.height);
+                    ctx.globalAlpha = 1;
+                }
                 
                 ctx.shadowBlur = 0;
             });
@@ -421,13 +575,13 @@
                 ctx.closePath();
                 ctx.fill();
 
-                // HP表示（タンクのみ）
-                if (enemy.type === 'tank') {
+                // HP表示
+                if (enemy.maxHp > 1) {
                     ctx.shadowBlur = 0;
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = '12px Arial';
+                    ctx.font = 'bold 14px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(enemy.hp, enemy.x, enemy.y + enemy.height / 2);
+                    ctx.fillText(enemy.hp, enemy.x, enemy.y + enemy.height / 2 + 5);
                 }
                 
                 ctx.shadowBlur = 0;
@@ -438,7 +592,7 @@
         function updateGenerator() {
             // スムーズに目標位置に移動
             const diff = generator.targetX - generator.x;
-            generator.x += diff * 0.2;
+            generator.x += diff * 0.25;
         }
 
         function updateBeams() {
@@ -453,7 +607,7 @@
                 enemy.y += enemy.speed;
             });
 
-            // 画面外に出た敵は削除（スコアは減らさない）
+            // 画面外に出た敵は削除
             enemies = enemies.filter(enemy => {
                 return enemy.y < canvas.height + 50;
             });
@@ -462,8 +616,10 @@
         function checkCollisions() {
             beams.forEach((beam, bIndex) => {
                 enemies.forEach((enemy, eIndex) => {
-                    if (beam.x > enemy.x - enemy.width / 2 &&
-                        beam.x < enemy.x + enemy.width / 2 &&
+                    const collisionWidth = beam.powerLevel === 3 ? beam.width * 2 : beam.width;
+                    
+                    if (beam.x > enemy.x - enemy.width / 2 - collisionWidth / 2 &&
+                        beam.x < enemy.x + enemy.width / 2 + collisionWidth / 2 &&
                         beam.y < enemy.y + enemy.height &&
                         beam.y + beam.height > enemy.y) {
                         
@@ -472,7 +628,8 @@
                         
                         if (enemy.hp <= 0) {
                             enemies.splice(eIndex, 1);
-                            score += enemy.type === 'tank' ? 30 : enemy.type === 'fast' ? 20 : 10;
+                            const baseScore = enemy.type === 'tank' ? 30 : enemy.type === 'fast' ? 20 : 10;
+                            score += baseScore * beam.powerLevel; // パワーレベルでボーナス
                             scoreDisplay.textContent = score;
                         }
                     }
@@ -500,7 +657,7 @@
 
         // タイマー更新
         function updateTimer() {
-            gameTime -= 0.016; // 約60FPSで16ms
+            gameTime -= 0.016;
             
             if (gameTime <= 0) {
                 gameTime = 0;
@@ -509,13 +666,26 @@
             
             timerDisplay.textContent = gameTime.toFixed(1);
             
-            // 残り時間が少ないと色変更
             if (gameTime < 5) {
                 timerDisplay.style.color = '#ff0000';
             } else if (gameTime < 10) {
                 timerDisplay.style.color = '#ff8800';
             } else {
                 timerDisplay.style.color = '#ffff00';
+            }
+        }
+
+        // パワーレベル表示更新
+        function updatePowerDisplay() {
+            const displayPower = energy >= 50 ? powerLevel : 1;
+            powerLevelDisplay.textContent = `パワー: Lv${displayPower}`;
+            
+            if (displayPower === 3) {
+                powerLevelDisplay.style.color = '#ff00ff';
+            } else if (displayPower === 2) {
+                powerLevelDisplay.style.color = '#00ffff';
+            } else {
+                powerLevelDisplay.style.color = '#ffffff';
             }
         }
 
@@ -531,6 +701,7 @@
             updateEnemies();
             checkCollisions();
             spawnWave();
+            updatePowerDisplay();
 
             drawGenerator();
             drawBeams();
@@ -550,11 +721,13 @@
             energy = 0;
             rotation = 0;
             gameTime = 15;
+            powerLevel = 1;
             beams = [];
             enemies = [];
             enemySpawnTimer = 0;
             enemiesPerWave = 5;
             enemiesSpawned = 0;
+            activeTouches.clear();
             
             resizeCanvas();
             resetGeneratorPosition();
@@ -563,6 +736,8 @@
             waveDisplay.textContent = wave;
             timerDisplay.textContent = '15.0';
             timerDisplay.style.color = '#ffff00';
+            powerLevelDisplay.textContent = 'パワー: Lv1';
+            powerLevelDisplay.style.color = '#ffffff';
             
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
