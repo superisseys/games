@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>スピンシューター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0a0a2e 0%, #16213e 100%);
+            overflow: hidden;
+            touch-action: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #0f0f23 0%, #1a1a3e 100%);
+            margin: 0 auto;
+            border: 3px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: #00ffff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            z-index: 10;
+        }
+
+        #energyBar {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        #energyFill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00ff00 0%, #00ffff 100%);
+            transition: width 0.1s;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: #00ffff;
+        }
+
+        #startScreen h1, #gameOverScreen h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 1);
+        }
+
+        #startScreen p, #gameOverScreen p {
+            font-size: 16px;
+            margin: 10px 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            background: linear-gradient(135deg, #00ffff 0%, #0099ff 100%);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+            transition: transform 0.2s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        #finalScore {
+            font-size: 48px;
+            color: #ffff00;
+            margin: 20px 0;
+            text-shadow: 0 0 20px rgba(255, 255, 0, 1);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div>スコア: <span id="score">0</span></div>
+            <div>Wave: <span id="wave">1</span></div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="energyBar">
+            <div id="energyFill"></div>
+        </div>
+
+        <div id="startScreen">
+            <h1>⚡ スピンシューター ⚡</h1>
+            <p>画面をスワイプして発電機を回転させよう！</p>
+            <p>エネルギーが溜まるとビームが発射されます</p>
+            <p>迫りくる敵を全て倒そう！</p>
+            <button id="startBtn">ゲーム開始</button>
+        </div>
+
+        <div id="gameOverScreen" class="hidden">
+            <h1>ゲームオーバー</h1>
+            <div id="finalScore">0</div>
+            <p>お疲れ様でした！</p>
+            <button id="restartBtn">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const scoreDisplay = document.getElementById('score');
+        const waveDisplay = document.getElementById('wave');
+        const energyFill = document.getElementById('energyFill');
+        const finalScoreDisplay = document.getElementById('finalScore');
+
+        // キャンバスサイズ設定
+        function resizeCanvas() {
+            const maxWidth = Math.min(window.innerWidth, 500);
+            const maxHeight = window.innerHeight - 180;
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // ゲーム状態
+        let gameRunning = false;
+        let score = 0;
+        let wave = 1;
+        let energy = 0;
+        const maxEnergy = 100;
+        let rotation = 0;
+        let lastTouchX = 0;
+        let isShooting = false;
+
+        // プレイヤー（発電機）
+        const generator = {
+            x: canvas.width / 2,
+            y: canvas.height - 60,
+            radius: 30,
+            blades: 8
+        };
+
+        // ビーム
+        let beams = [];
+
+        // 敵
+        let enemies = [];
+        let enemySpawnTimer = 0;
+        let enemiesPerWave = 5;
+        let enemiesSpawned = 0;
+
+        // タッチイベント
+        let touchStartX = 0;
+        let lastRotationSpeed = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            lastTouchX = touchStartX;
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!gameRunning) return;
+            
+            const touchX = e.touches[0].clientX;
+            const deltaX = touchX - lastTouchX;
+            
+            // 回転速度に応じてエネルギー増加
+            const rotationSpeed = Math.abs(deltaX);
+            rotation += deltaX * 0.1;
+            
+            if (rotationSpeed > 1) {
+                energy = Math.min(energy + rotationSpeed * 0.3, maxEnergy);
+                lastRotationSpeed = rotationSpeed;
+            }
+            
+            lastTouchX = touchX;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (!gameRunning) return;
+            
+            // エネルギーが十分なら発射
+            if (energy >= 50 && !isShooting) {
+                shootBeam();
+                energy = 0;
+            }
+            
+            lastRotationSpeed = 0;
+        }, { passive: false });
+
+        // ビーム発射
+        function shootBeam() {
+            isShooting = true;
+            beams.push({
+                x: generator.x,
+                y: generator.y - generator.radius,
+                width: 10,
+                height: 30,
+                speed: 15,
+                damage: 1
+            });
+            
+            setTimeout(() => {
+                isShooting = false;
+            }, 200);
+        }
+
+        // 敵生成
+        function spawnEnemy() {
+            const types = ['basic', 'fast', 'tank'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            let enemy = {
+                x: Math.random() * (canvas.width - 40) + 20,
+                y: -30,
+                width: 30,
+                height: 30,
+                type: type,
+                hp: 1,
+                speed: 1,
+                color: '#ff0000'
+            };
+
+            if (type === 'fast') {
+                enemy.speed = 2;
+                enemy.color = '#ff00ff';
+                enemy.width = 25;
+                enemy.height = 25;
+            } else if (type === 'tank') {
+                enemy.hp = 3;
+                enemy.speed = 0.5;
+                enemy.color = '#ff8800';
+                enemy.width = 40;
+                enemy.height = 40;
+            }
+
+            enemies.push(enemy);
+        }
+
+        // 描画関数
+        function drawGenerator() {
+            ctx.save();
+            ctx.translate(generator.x, generator.y);
+            ctx.rotate(rotation);
+
+            // 発電機の本体
+            ctx.fillStyle = '#333333';
+            ctx.beginPath();
+            ctx.arc(0, 0, generator.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // エネルギーグロー
+            if (energy > 20) {
+                const glowIntensity = energy / maxEnergy;
+                ctx.shadowBlur = 20 * glowIntensity;
+                ctx.shadowColor = '#00ffff';
+                ctx.strokeStyle = `rgba(0, 255, 255, ${glowIntensity})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, generator.radius + 5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 羽根
+            ctx.shadowBlur = 0;
+            for (let i = 0; i < generator.blades; i++) {
+                const angle = (Math.PI * 2 / generator.blades) * i;
+                ctx.save();
+                ctx.rotate(angle);
+                
+                ctx.fillStyle = '#00ffff';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(generator.radius - 5, -8);
+                ctx.lineTo(generator.radius - 5, 8);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            // 中心
+            ctx.fillStyle = '#00ffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+
+            // エネルギー自然減衰
+            if (lastRotationSpeed < 0.1) {
+                energy = Math.max(0, energy - 0.2);
+            }
+        }
+
+        function drawBeams() {
+            beams.forEach(beam => {
+                ctx.fillStyle = '#00ffff';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00ffff';
+                
+                // ビームの輝き効果
+                ctx.fillRect(beam.x - beam.width / 2, beam.y, beam.width, beam.height);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(beam.x - beam.width / 4, beam.y, beam.width / 2, beam.height);
+                
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                ctx.fillStyle = enemy.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = enemy.color;
+                
+                // 敵の形状（三角形）
+                ctx.beginPath();
+                ctx.moveTo(enemy.x, enemy.y + enemy.height);
+                ctx.lineTo(enemy.x - enemy.width / 2, enemy.y);
+                ctx.lineTo(enemy.x + enemy.width / 2, enemy.y);
+                ctx.closePath();
+                ctx.fill();
+
+                // HP表示（タンクのみ）
+                if (enemy.type === 'tank') {
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(enemy.hp, enemy.x, enemy.y + enemy.height / 2);
+                }
+                
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        // 更新関数
+        function updateBeams() {
+            beams = beams.filter(beam => {
+                beam.y -= beam.speed;
+                return beam.y > -beam.height;
+            });
+        }
+
+        function updateEnemies() {
+            enemies.forEach(enemy => {
+                enemy.y += enemy.speed;
+            });
+
+            // 画面外に出た敵は削除（ゲームオーバー条件）
+            enemies = enemies.filter(enemy => {
+                if (enemy.y > canvas.height + 50) {
+                    endGame();
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        function checkCollisions() {
+            beams.forEach((beam, bIndex) => {
+                enemies.forEach((enemy, eIndex) => {
+                    if (beam.x > enemy.x - enemy.width / 2 &&
+                        beam.x < enemy.x + enemy.width / 2 &&
+                        beam.y < enemy.y + enemy.height &&
+                        beam.y + beam.height > enemy.y) {
+                        
+                        enemy.hp -= beam.damage;
+                        beams.splice(bIndex, 1);
+                        
+                        if (enemy.hp <= 0) {
+                            enemies.splice(eIndex, 1);
+                            score += enemy.type === 'tank' ? 30 : enemy.type === 'fast' ? 20 : 10;
+                            scoreDisplay.textContent = score;
+                        }
+                    }
+                });
+            });
+        }
+
+        function spawnWave() {
+            enemySpawnTimer++;
+            
+            if (enemySpawnTimer > 60 && enemiesSpawned < enemiesPerWave) {
+                spawnEnemy();
+                enemiesSpawned++;
+                enemySpawnTimer = 0;
+            }
+
+            // 全ての敵を倒したら次のwave
+            if (enemiesSpawned >= enemiesPerWave && enemies.length === 0) {
+                wave++;
+                waveDisplay.textContent = wave;
+                enemiesPerWave += 2;
+                enemiesSpawned = 0;
+            }
+        }
+
+        // ゲームループ
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            updateBeams();
+            updateEnemies();
+            checkCollisions();
+            spawnWave();
+
+            drawGenerator();
+            drawBeams();
+            drawEnemies();
+
+            // エネルギーバー更新
+            energyFill.style.width = `${(energy / maxEnergy) * 100}%`;
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ゲーム開始
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            wave = 1;
+            energy = 0;
+            rotation = 0;
+            beams = [];
+            enemies = [];
+            enemySpawnTimer = 0;
+            enemiesPerWave = 5;
+            enemiesSpawned = 0;
+            
+            scoreDisplay.textContent = score;
+            waveDisplay.textContent = wave;
+            
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            
+            gameLoop();
+        }
+
+        // ゲーム終了
+        function endGame() {
+            gameRunning = false;
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        // イベントリスナー
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
