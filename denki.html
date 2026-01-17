@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>電気椅子ゲーム - THE FINAL</title>
+<style>
+:root {
+--bg: #050505;
+--gold: #d4af37;
+--red: #ff3333;
+--board-bg: #001a00;
+--p1-color: #00bfff;
+--p2-color: #ff4500;
+}
+* { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body { background: var(--bg); color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 10px; min-height: 100vh; overflow: hidden; touch-action: none; }
+
+.scoreboard {
+background: var(--board-bg); border: 2px solid #444; width: 100%; max-width: 600px;
+margin-bottom: 10px; border-collapse: collapse; table-layout: fixed;
+}
+.scoreboard th, .scoreboard td { border: 1px solid #113311; height: 35px; text-align: center; vertical-align: middle; }
+.name-cell { width: 45px; color: var(--gold); font-weight: bold; font-size: 0.7rem; border-right: 2px solid var(--gold) !important; }
+.total-cell { width: 45px; border-left: 2px solid var(--gold) !important; font-weight: bold; font-size: 0.8rem; }
+.inning-label { font-size: 0.7rem; color: #558855; }
+.hit-bolt { color: var(--red); font-size: 1rem; filter: drop-shadow(0 0 3px var(--red)); }
+
+.circle-field { position: relative; width: 350px; height: 350px; margin: 20px auto; }
+.status-msg {
+position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+width: 140px; height: 140px; background: rgba(17,17,17,0.7); border: 1px solid #333; border-radius: 50%;
+display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.85rem; font-weight: bold; color: #00ff00; z-index: 5; padding: 15px; box-sizing: border-box; pointer-events: none; white-space: pre-wrap;
+}
+
+.chair {
+position: absolute; width: 58px; height: 58px; background: #1a1a1a; border: 2px solid #444; color: #fff;
+font-size: 1.5rem; font-weight: bold; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10;
+transition: top 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), left 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.1s;
+}
+.chair.dragging { transition: none !important; z-index: 100; border-color: var(--gold); box-shadow: 0 0 15px var(--gold); transform: scale(1.1); }
+.chair.removed { visibility: hidden; pointer-events: none; }
+
+.overlay {
+position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+background: rgba(0,0,0,0.1);
+display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; text-align: center;
+}
+.overlay.active { display: flex; }
+
+.popup-box {
+background: #0a0a0a; border: 4px solid var(--gold); padding: 25px; border-radius: 20px;
+width: 80%; max-width: 300px; box-shadow: 0 0 50px rgba(0,0,0,1);
+transition: border-color 0.3s ease;
+}
+
+.btn-action { background: var(--gold); color: #000; padding: 12px 35px; border: none; font-size: 1.2rem; font-weight: bold; cursor: pointer; border-radius: 8px; margin-top: 20px; outline: none; box-shadow: 0 4px #8a6d0e; }
+.btn-action:active { transform: translateY(2px); box-shadow: none; }
+
+.num-display { font-size: 2.8rem; font-weight: bold; margin: 10px 0; }
+.safe-txt { color: #00ff00; }
+.out-txt { color: var(--red); }
+
+.btn-reset { margin-top: auto; margin-bottom: 20px; background: transparent; color: #444; border: 1px solid #333; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 0.7rem; pointer-events: auto; }
+.shock-bg { animation: shake 0.05s infinite; background: #fff !important; }
+@keyframes shake { 0%{transform:translate(3px,3px)} 50%{transform:translate(-3px,-3px)} }
+
+/* 最終結果用テキストスタイル */
+.final-msg { font-size: 2.5rem; font-weight: 900; margin: 0; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+.final-sub { font-size: 1.1rem; color: #ccc; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<table class="scoreboard">
+<thead>
+<tr class="inning-label"><th class="name-cell">TURN</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th class="total-cell">計</th></tr>
+</thead>
+<tbody>
+<tr id="p1-row"><td class="name-cell" style="color:var(--p1-color)">P1</td><td id="p1-t1"></td><td id="p1-t2"></td><td id="p1-t3"></td><td id="p1-t4"></td><td id="p1-t5"></td><td id="p1-t6"></td><td id="p1-t7"></td><td id="p1-t8"></td><td id="p1-t9"></td><td id="p1-t10"></td><td id="p1-t11"></td><td id="p1-t12"></td><td id="p1-total" class="total-cell">0</td></tr>
+<tr id="p2-row"><td class="name-cell" style="color:var(--p2-color)">P2</td><td id="p2-t1"></td><td id="p2-t2"></td><td id="p2-t3"></td><td id="p2-t4"></td><td id="p2-t5"></td><td id="p2-t6"></td><td id="p2-t7"></td><td id="p2-t8"></td><td id="p2-t9"></td><td id="p2-t10"></td><td id="p2-t11"></td><td id="p2-t12"></td><td id="p2-total" class="total-cell">0</td></tr>
+</tbody>
+</table>
+
+<div class="circle-field" id="field"><div id="msg" class="status-msg"></div></div>
+
+<button class="btn-reset" onclick="confirmReset()">ゲームをリセット</button>
+
+<div id="ready-overlay" class="overlay">
+<div class="popup-box" id="ready-box"><h2 id="ready-title" style="margin:0; font-size: 1.5rem;"></h2><p id="ready-sub" style="font-size: 1rem; color: #ccc; margin: 10px 0;"></p><button class="btn-action" onclick="hideReadyOverlay()">準備完了</button></div>
+</div>
+
+<div id="result-overlay" class="overlay">
+<div class="popup-box" id="result-box"><h2 id="result-status" style="margin:0; font-size: 1.8rem;"></h2><div style="font-size: 0.8rem; color: #888; margin-top:15px;">選択 / 正解</div><div class="num-display"><span id="selected-num"></span> / <span id="trap-num-display" style="color:var(--red)"></span></div><button class="btn-action" onclick="nextTurn()">次へ</button></div>
+</div>
+
+<div id="final-overlay" class="overlay">
+<div class="popup-box" id="final-box">
+<h2 id="final-title" class="final-msg"></h2>
+<p id="final-sub" class="final-sub"></p>
+<button class="btn-action" onclick="location.reload()">再戦する</button>
+</div>
+</div>
+
+<script>
+let players = [{score:0, life:3, id:1, history:[]}, {score:0, life:3, id:2, history:[]}];
+let attackerIdx = 0, trapNumber = null, selectedNumber = null, mode = 'SET', removedChairs = new Set();
+let isDragging = false, dragTarget = null, longPressTimer = null, offsetX, offsetY;
+
+function initChairs() {
+const field = document.getElementById('field');
+const radius = 145;
+for (let i = 1; i <= 12; i++) {
+const btn = document.createElement('div');
+btn.className = 'chair'; btn.id = `chair-${i}`; btn.innerText = i;
+const angle = (i * 30 - 90) * (Math.PI / 180);
+const x = 175 + radius * Math.cos(angle) - 29;
+const y = 175 + radius * Math.sin(angle) - 29;
+btn.dataset.originX = x; btn.dataset.originY = y;
+btn.style.left = x + 'px'; btn.style.top = y + 'px';
+btn.addEventListener('touchstart', (e) => onStart(e, i), {passive: false});
+btn.addEventListener('mousedown', (e) => onStart(e, i));
+field.appendChild(btn);
+}
+}
+
+function onStart(e, num) {
+if (removedChairs.has(num)) return;
+const target = document.getElementById(`chair-${num}`);
+const pos = e.touches ? e.touches[0] : e;
+longPressTimer = setTimeout(() => {
+if (mode === 'SET') { isDragging = true; dragTarget = target; dragTarget.classList.add('dragging'); offsetX = pos.clientX - dragTarget.offsetLeft; offsetY = pos.clientY - dragTarget.offsetTop; }
+}, 400);
+const onEnd = () => {
+clearTimeout(longPressTimer);
+if (isDragging) { isDragging = false; dragTarget.classList.remove('dragging'); dragTarget = null; } else { handleChoice(num); }
+window.removeEventListener('touchend', onEnd); window.removeEventListener('mouseup', onEnd);
+};
+window.addEventListener('touchend', onEnd); window.addEventListener('mouseup', onEnd);
+}
+
+window.addEventListener('touchmove', (e) => {
+if (!isDragging || !dragTarget) return;
+e.preventDefault();
+const pos = e.touches[0]; dragTarget.style.left = (pos.clientX - offsetX) + 'px'; dragTarget.style.top = (pos.clientY - offsetY) + 'px';
+}, {passive: false});
+
+window.addEventListener('mousemove', (e) => {
+if (!isDragging || !dragTarget) return;
+dragTarget.style.left = (e.clientX - offsetX) + 'px'; dragTarget.style.top = (e.clientY - offsetY) + 'px';
+});
+
+function updateDisplay() {
+document.getElementById('p1-total').innerText = players[0].score;
+document.getElementById('p2-total').innerText = players[1].score;
+players.forEach(p => p.history.forEach((val, i) => {
+const cell = document.getElementById(`p${p.id}-t${i+1}`);
+if (cell) cell.innerHTML = val === '⚡' ? '<span class="hit-bolt">⚡</span>' : val;
+}));
+const defenderIdx = 1 - attackerIdx;
+document.getElementById('msg').innerText = (mode === 'SET') ?
+`P${players[defenderIdx].id}守備\n電流セット` : `P${players[attackerIdx].id}攻撃\n座れ\n❤:${"⚡".repeat(players[attackerIdx].life)}`;
+
+for (let i = 1; i <= 12; i++) {
+const el = document.getElementById(`chair-${i}`);
+if (removedChairs.has(i)) el.classList.add('removed');
+else el.classList.remove('removed');
+}
+}
+
+function handleChoice(num) {
+if (mode === 'SET') {
+trapNumber = num;
+showReadyOverlay(`P${players[attackerIdx].id} の番`, "交代して椅子を選んでください", 'CHOOSE');
+} else {
+selectedNumber = num;
+showResult();
+}
+}
+
+function showResult() {
+const resOverlay = document.getElementById('result-overlay');
+const resBox = document.getElementById('result-box');
+document.getElementById('selected-num').innerText = selectedNumber;
+document.getElementById('trap-num-display').innerText = trapNumber;
+const resStatus = document.getElementById('result-status');
+
+const activeColor = players[attackerIdx].id === 1 ? "var(--p1-color)" : "var(--p2-color)";
+resBox.style.borderColor = activeColor;
+resStatus.style.color = (selectedNumber === trapNumber) ? "var(--red)" : "#00ff00";
+
+if (selectedNumber === trapNumber) {
+document.body.classList.add('shock-bg');
+resStatus.innerText = "的中！！";
+players[attackerIdx].score = 0; players[attackerIdx].life--; players[attackerIdx].history.push('⚡');
+} else {
+resStatus.innerText = "回避成功！";
+removedChairs.add(selectedNumber);
+players[attackerIdx].score += selectedNumber; players[attackerIdx].history.push(selectedNumber);
+}
+resOverlay.classList.add('active');
+}
+
+function nextTurn() {
+document.body.classList.remove('shock-bg');
+document.getElementById('result-overlay').classList.remove('active');
+
+// 決着判定
+if (players[attackerIdx].life <= 0 || players[attackerIdx].score >= 40) {
+showFinalOverlay();
+return;
+}
+
+attackerIdx = 1 - attackerIdx;
+showReadyOverlay(`次は P${players[1-attackerIdx].id} の守備`, "交代してください", 'SET');
+}
+
+function showFinalOverlay() {
+const overlay = document.getElementById('final-overlay');
+const box = document.getElementById('final-box');
+const title = document.getElementById('final-title');
+const sub = document.getElementById('final-sub');
+
+let winner;
+if (players[attackerIdx].score >= 40) {
+winner = players[attackerIdx];
+title.innerText = `P${winner.id} WIN!!`;
+sub.innerText = "40ポイント先取、完全勝利。";
+} else {
+winner = players[1 - attackerIdx];
+title.innerText = `P${players[attackerIdx].id} LOSE...`;
+sub.innerText = "3回的中、再起不能。";
+}
+
+const winColor = winner.id === 1 ? "var(--p1-color)" : "var(--p2-color)";
+box.style.borderColor = (players[attackerIdx].score >= 40) ? winColor : "var(--red)";
+title.style.color = (players[attackerIdx].score >= 40) ? winColor : "var(--red)";
+
+overlay.classList.add('active');
+}
+
+function showReadyOverlay(title, sub, nextMode) {
+const box = document.getElementById('ready-box');
+const titleEl = document.getElementById('ready-title');
+const nextPlayer = (nextMode === 'SET') ? players[1 - attackerIdx] : players[attackerIdx];
+const activeColor = nextPlayer.id === 1 ? "var(--p1-color)" : "var(--p2-color)";
+
+box.style.borderColor = activeColor;
+titleEl.style.color = activeColor;
+titleEl.innerText = title;
+document.getElementById('ready-sub').innerText = sub;
+document.getElementById('ready-overlay').classList.add('active');
+mode = nextMode;
+}
+
+function hideReadyOverlay() {
+document.getElementById('ready-overlay').classList.remove('active');
+if (mode === 'SET') {
+for (let i = 1; i <= 12; i++) {
+const el = document.getElementById(`chair-${i}`);
+el.style.left = el.dataset.originX + 'px'; el.style.top = el.dataset.originY + 'px';
+}
+}
+updateDisplay();
+}
+
+function confirmReset() { if(confirm("リセットしますか？")) location.reload(); }
+window.onload = () => { initChairs(); showReadyOverlay("電気椅子ゲーム開始", "P2守備からセットしてください", 'SET'); };
+</script>
+
+</body>
+</html>
