@@ -53,6 +53,18 @@
             z-index: 10;
         }
 
+        #timer {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffff00;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(255, 255, 0, 1);
+            z-index: 10;
+        }
+
         #energyBar {
             position: absolute;
             bottom: 120px;
@@ -140,6 +152,8 @@
             <div>Wave: <span id="wave">1</span></div>
         </div>
         
+        <div id="timer">15.0</div>
+        
         <canvas id="gameCanvas"></canvas>
         
         <div id="energyBar">
@@ -148,9 +162,9 @@
 
         <div id="startScreen">
             <h1>⚡ スピンシューター ⚡</h1>
-            <p>画面をスワイプして発電機を回転させよう！</p>
-            <p>エネルギーが溜まるとビームが発射されます</p>
-            <p>迫りくる敵を全て倒そう！</p>
+            <p>画面を左右にスワイプして移動！</p>
+            <p>回転させてエネルギーを溜めよう</p>
+            <p>15秒間でできるだけ多くの敵を倒そう！</p>
             <button id="startBtn">ゲーム開始</button>
         </div>
 
@@ -173,6 +187,7 @@
         const waveDisplay = document.getElementById('wave');
         const energyFill = document.getElementById('energyFill');
         const finalScoreDisplay = document.getElementById('finalScore');
+        const timerDisplay = document.getElementById('timer');
 
         // キャンバスサイズ設定
         function resizeCanvas() {
@@ -193,14 +208,23 @@
         let rotation = 0;
         let lastTouchX = 0;
         let isShooting = false;
+        let gameTime = 15;
 
         // プレイヤー（発電機）
-        const generator = {
-            x: canvas.width / 2,
-            y: canvas.height - 60,
+        let generator = {
+            x: 0,
+            y: 0,
             radius: 30,
-            blades: 8
+            blades: 8,
+            targetX: 0
         };
+        
+        function resetGeneratorPosition() {
+            generator.x = canvas.width / 2;
+            generator.y = canvas.height - 60;
+            generator.targetX = generator.x;
+        }
+        resetGeneratorPosition();
 
         // ビーム
         let beams = [];
@@ -214,11 +238,13 @@
         // タッチイベント
         let touchStartX = 0;
         let lastRotationSpeed = 0;
+        let touchStartTime = 0;
 
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             touchStartX = e.touches[0].clientX;
             lastTouchX = touchStartX;
+            touchStartTime = Date.now();
         }, { passive: false });
 
         canvas.addEventListener('touchmove', (e) => {
@@ -227,6 +253,11 @@
             
             const touchX = e.touches[0].clientX;
             const deltaX = touchX - lastTouchX;
+            
+            // プレイヤーを移動
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (touchX - rect.left) * (canvas.width / rect.width);
+            generator.targetX = Math.max(generator.radius, Math.min(canvas.width - generator.radius, canvasX));
             
             // 回転速度に応じてエネルギー増加
             const rotationSpeed = Math.abs(deltaX);
@@ -243,6 +274,8 @@
         canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
             if (!gameRunning) return;
+            
+            const touchDuration = Date.now() - touchStartTime;
             
             // エネルギーが十分なら発射
             if (energy >= 50 && !isShooting) {
@@ -282,18 +315,18 @@
                 height: 30,
                 type: type,
                 hp: 1,
-                speed: 1,
+                speed: 1.5,
                 color: '#ff0000'
             };
 
             if (type === 'fast') {
-                enemy.speed = 2;
+                enemy.speed = 2.5;
                 enemy.color = '#ff00ff';
                 enemy.width = 25;
                 enemy.height = 25;
             } else if (type === 'tank') {
                 enemy.hp = 3;
-                enemy.speed = 0.5;
+                enemy.speed = 1;
                 enemy.color = '#ff8800';
                 enemy.width = 40;
                 enemy.height = 40;
@@ -402,6 +435,12 @@
         }
 
         // 更新関数
+        function updateGenerator() {
+            // スムーズに目標位置に移動
+            const diff = generator.targetX - generator.x;
+            generator.x += diff * 0.2;
+        }
+
         function updateBeams() {
             beams = beams.filter(beam => {
                 beam.y -= beam.speed;
@@ -414,13 +453,9 @@
                 enemy.y += enemy.speed;
             });
 
-            // 画面外に出た敵は削除（ゲームオーバー条件）
+            // 画面外に出た敵は削除（スコアは減らさない）
             enemies = enemies.filter(enemy => {
-                if (enemy.y > canvas.height + 50) {
-                    endGame();
-                    return false;
-                }
-                return true;
+                return enemy.y < canvas.height + 50;
             });
         }
 
@@ -448,7 +483,7 @@
         function spawnWave() {
             enemySpawnTimer++;
             
-            if (enemySpawnTimer > 60 && enemiesSpawned < enemiesPerWave) {
+            if (enemySpawnTimer > 40 && enemiesSpawned < enemiesPerWave) {
                 spawnEnemy();
                 enemiesSpawned++;
                 enemySpawnTimer = 0;
@@ -463,12 +498,35 @@
             }
         }
 
+        // タイマー更新
+        function updateTimer() {
+            gameTime -= 0.016; // 約60FPSで16ms
+            
+            if (gameTime <= 0) {
+                gameTime = 0;
+                endGame();
+            }
+            
+            timerDisplay.textContent = gameTime.toFixed(1);
+            
+            // 残り時間が少ないと色変更
+            if (gameTime < 5) {
+                timerDisplay.style.color = '#ff0000';
+            } else if (gameTime < 10) {
+                timerDisplay.style.color = '#ff8800';
+            } else {
+                timerDisplay.style.color = '#ffff00';
+            }
+        }
+
         // ゲームループ
         function gameLoop() {
             if (!gameRunning) return;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            updateTimer();
+            updateGenerator();
             updateBeams();
             updateEnemies();
             checkCollisions();
@@ -491,14 +549,20 @@
             wave = 1;
             energy = 0;
             rotation = 0;
+            gameTime = 15;
             beams = [];
             enemies = [];
             enemySpawnTimer = 0;
             enemiesPerWave = 5;
             enemiesSpawned = 0;
             
+            resizeCanvas();
+            resetGeneratorPosition();
+            
             scoreDisplay.textContent = score;
             waveDisplay.textContent = wave;
+            timerDisplay.textContent = '15.0';
+            timerDisplay.style.color = '#ffff00';
             
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
@@ -508,6 +572,7 @@
 
         // ゲーム終了
         function endGame() {
+            if (!gameRunning) return;
             gameRunning = false;
             finalScoreDisplay.textContent = score;
             gameOverScreen.classList.remove('hidden');
