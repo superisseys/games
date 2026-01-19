@@ -1,0 +1,1796 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ラグビーカードゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        /* プレイヤー色定義 */
+        :root {
+            --player-color: #1976D2; /* 青 */
+            --player-color-bg: #64B5F6; /* 青背景 */
+            --cpu-color: #F57C00; /* オレンジ */
+            --cpu-color-bg: #FFB74D; /* オレンジ背景 */
+            --white-bg: #FFFFFF; /* 白背景 */
+        }
+
+        /* スタート画面 */
+        #startScreen {
+            text-align: center;
+            padding: 25px 30px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 3px solid #1976D2;
+        }
+
+        #startScreen h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #1976D2;
+            font-weight: bold;
+        }
+
+        #startScreen label {
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: block;
+            color: #333;
+            font-weight: 500;
+        }
+
+        #startScreen select {
+            font-size: 14px;
+            padding: 8px 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 2px solid #1976D2;
+            background: white;
+            cursor: pointer;
+            color: #333;
+        }
+
+        #startScreen button {
+            font-size: 17px;
+            padding: 12px 35px;
+            background: var(--player-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+        }
+
+        #startScreen button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ゲーム画面 */
+        #gameScreen {
+            display: none;
+            width: 100%;
+            max-width: 100vw;
+        }
+
+        /* スコアボード */
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .player-score {
+            text-align: center;
+            flex: 1;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .player-score.player-side {
+            background: var(--player-color-bg);
+            border-color: var(--player-color);
+        }
+
+        .player-score.cpu-side {
+            background: var(--cpu-color-bg);
+            border-color: var(--cpu-color);
+        }
+
+        .player-score.active {
+            box-shadow: 0 0 15px var(--player-color), 0 3px 10px rgba(0, 0, 0, 0.2);
+            transform: scale(1.03);
+        }
+
+        .player-score.cpu-side.active {
+            box-shadow: 0 0 15px var(--cpu-color), 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .player-score h2 {
+            font-size: 11px;
+            margin-bottom: 2px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .player-score .score {
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        /* フィールド */
+        .field-container {
+            background: white;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            position: relative;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+            border: 2px solid #4CAF50;
+        }
+
+        .field {
+            background: linear-gradient(90deg, 
+                #81C784 0%, #81C784 49%, 
+                #fff 49%, #fff 51%, 
+                #81C784 51%, #81C784 100%);
+            height: 45px;
+            position: relative;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+            border: 2px solid #4CAF50;
+        }
+
+        .field-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            color: #2E7D32;
+            font-weight: bold;
+            font-size: 11px;
+            position: relative;
+        }
+
+        .ball-position {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            transition: left 0.5s ease-out;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.6));
+        }
+
+        /* 実況ログ */
+        .commentary {
+            background: var(--white-bg);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .commentary-log {
+            max-height: 80px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .commentary-item {
+            padding: 4px 8px;
+            margin-bottom: 3px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 4px;
+            font-size: 11px;
+            border-left: 3px solid #888;
+            color: #333;
+        }
+
+        .commentary-item.player {
+            border-left-color: var(--player-color);
+            background: rgba(25, 118, 210, 0.1);
+        }
+
+        .commentary-item.cpu {
+            border-left-color: var(--cpu-color);
+            background: rgba(245, 124, 0, 0.1);
+        }
+
+        /* キックオフポップアップ */
+        .kickoff-popup {
+            padding: 24px;
+            background: white;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            min-width: 280px;
+            max-width: 90vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .kickoff-popup.player-kickoff {
+            border: 4px solid var(--player-color);
+        }
+
+        .kickoff-popup.cpu-kickoff {
+            border: 4px solid var(--cpu-color);
+        }
+
+        .kickoff-header {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .kickoff-header.player-kickoff {
+            background: var(--player-color);
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .kickoff-header.cpu-kickoff {
+            background: var(--cpu-color);
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .slot-container {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .slot-number {
+            width: 55px;
+            height: 70px;
+            background: #f5f5f5;
+            color: #1e5128;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border: 2px solid #ccc;
+        }
+
+        .kickoff-button {
+            font-size: 17px;
+            padding: 12px 35px;
+            background: var(--player-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+        }
+
+        .kickoff-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .kickoff-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* コンバージョンキック ボタン */
+            font-size: 18px;
+            padding: 12px 40px;
+            background: #FFD700;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        .conversion-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .conversion-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* カード関連 */
+        .cards-container {
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .cards-container.player-turn {
+            background: var(--player-color-bg);
+            border-color: var(--player-color);
+        }
+
+        .cards-container.cpu-turn {
+            background: var(--cpu-color-bg);
+            border-color: var(--cpu-color);
+        }
+
+        .cards-container h3 {
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .cards-container h3.right {
+            text-align: right;
+        }
+
+        .hand {
+            display: flex;
+            gap: 2px;
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+            min-height: 46px;
+        }
+
+        .card {
+            min-width: 46px;
+            width: 46px;
+            height: 46px;
+            background: white;
+            border-radius: 6px;
+            padding: 4px;
+            transition: all 0.5s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .card.using {
+            animation: cardGlow 0.5s ease-in-out;
+            border: 4px solid #ffd700;
+        }
+
+        .card.disappearing {
+            animation: cardDisappear 0.5s ease-out forwards;
+        }
+
+        .card.appearing {
+            animation: cardSlideIn 0.5s ease-out;
+        }
+
+        .card.shift-left {
+            animation: shiftLeft 0.5s ease-out;
+        }
+
+        @keyframes cardGlow {
+            0%, 100% { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); }
+            50% { box-shadow: 0 0 30px #ffd700, 0 0 50px #ffd700; }
+        }
+
+        @keyframes cardDisappear {
+            0% { 
+                opacity: 1; 
+                transform: scale(1); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(0) translateY(-30px);
+                width: 0;
+                min-width: 0;
+                margin-right: -4px;
+                padding: 0;
+            }
+        }
+
+        @keyframes cardSlideIn {
+            0% { 
+                opacity: 0; 
+                transform: translateX(0) scale(1);
+            }
+            100% { 
+                opacity: 1; 
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        @keyframes shiftLeft {
+            0% { 
+                transform: translateX(49px);
+            }
+            100% { 
+                transform: translateX(0);
+            }
+        }
+
+        .card-position {
+            font-size: 11px;
+            font-weight: bold;
+            color: #1e5128;
+            line-height: 1;
+        }
+
+        /* 役選択 */
+        .combinations {
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            border: 2px solid transparent;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            background: var(--white-bg);
+        }
+
+        .combinations.player-turn {
+            border-color: var(--player-color);
+        }
+
+        .combinations.cpu-turn {
+            border-color: var(--cpu-color);
+        }
+
+        .combinations h3 {
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .combinations.player-turn h3 {
+            color: var(--player-color);
+        }
+
+        .combinations.cpu-turn h3 {
+            color: var(--cpu-color);
+        }
+
+        .no-combos-message {
+            padding: 8px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+            font-size: 11px;
+            line-height: 1.4;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .combinations.player-turn .no-combos-message {
+            color: var(--player-color);
+        }
+
+        .combinations.cpu-turn .no-combos-message {
+            color: var(--cpu-color);
+        }
+
+        .shuffle-button {
+            width: 100%;
+            font-size: 14px;
+            padding: 12px;
+            background: var(--player-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+        }
+
+        .shuffle-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .shuffle-button:disabled {
+            background: #999;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .combination-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .combination-item {
+            background: rgba(0, 0, 0, 0.03);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            color: #333;
+        }
+
+        .combination-item:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .combination-item.selected {
+            background: var(--player-color) !important;
+            border-color: var(--player-color) !important;
+            border-width: 3px !important;
+            color: white !important;
+        }
+
+        .combination-item.selected .combination-name,
+        .combination-item.selected .combination-cards,
+        .combination-item.selected .combination-distance {
+            color: white !important;
+        }
+
+        .combinations.cpu-turn .combination-item.selected {
+            background: var(--cpu-color) !important;
+            border-color: var(--cpu-color) !important;
+        }
+
+        .combinations.player-turn .combination-item:hover {
+            border-color: var(--player-color);
+        }
+
+        .combinations.cpu-turn .combination-item:hover {
+            border-color: var(--cpu-color);
+        }
+
+        .combination-name {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            display: inline;
+        }
+        
+        .combinations.player-turn .combination-name {
+            color: var(--player-color);
+        }
+        
+        .combinations.cpu-turn .combination-name {
+            color: var(--cpu-color);
+        }
+
+        .combination-cards {
+            font-size: 12px;
+            color: #1e5128;
+            margin-bottom: 2px;
+            display: inline;
+            margin: 0 6px;
+            font-weight: bold;
+        }
+
+        .combination-distance {
+            display: none;
+        }
+
+        /* ポップアップ */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .popup-overlay.show {
+            display: flex;
+        }
+
+        .popup {
+            background: white;
+            padding: 25px 35px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: popupAppear 0.3s ease-out;
+            max-width: 90vw;
+            border: 3px solid #1e5128;
+            margin: 0 auto;
+        }
+
+        .popup.try.player-try {
+            background: var(--player-color);
+            color: white;
+            border-color: var(--player-color);
+        }
+
+        .popup.try.cpu-try {
+            background: var(--cpu-color);
+            color: white;
+            border-color: var(--cpu-color);
+        }
+
+        .popup.conversion-success.player-conversion {
+            background: var(--player-color);
+            color: white;
+            border-color: var(--player-color);
+        }
+
+        .popup.conversion-success.cpu-conversion {
+            background: var(--cpu-color);
+            color: white;
+            border-color: var(--cpu-color);
+        }
+
+        .popup.conversion-fail {
+            background: #9E9E9E;
+            color: white;
+            border-color: #616161;
+        }
+        
+        .popup.turnover {
+            background: #9E9E9E;
+            color: white;
+            border-color: #616161;
+        }
+
+        @keyframes popupAppear {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .popup h2 {
+            font-size: 26px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #1e5128;
+        }
+
+        .popup.try h2 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .popup p {
+            font-size: 15px;
+            margin-bottom: 6px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .popup.try p {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .popup.try h2,
+        .popup.conversion-success h2,
+        .popup.conversion-fail h2,
+        .popup.turnover h2 {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .popup.conversion-success p,
+        .popup.conversion-fail p,
+        .popup.turnover p {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 勝利画面 */
+        #victoryScreen {
+            display: none;
+            text-align: center;
+            padding: 35px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            border: 4px solid #FFD700;
+        }
+
+        #victoryScreen h1 {
+            font-size: 32px;
+            margin-bottom: 25px;
+            color: #FF8C00;
+            font-weight: bold;
+        }
+
+        #victoryScreen button {
+            font-size: 17px;
+            padding: 12px 35px;
+            background: var(--player-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+        }
+
+        #victoryScreen button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* スクロールバー */
+        .combination-list::-webkit-scrollbar,
+        .commentary-log::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .combination-list::-webkit-scrollbar-track,
+        .commentary-log::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .combination-list::-webkit-scrollbar-thumb,
+        .commentary-log::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .combination-list::-webkit-scrollbar-thumb:hover,
+        .commentary-log::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- スタート画面 -->
+    <div id="startScreen">
+        <h1>ラグビーカードゲーム</h1>
+        <label for="tryCount">目標得点を選択:</label>
+        <select id="tryCount">
+            <option value="10">10点先取</option>
+            <option value="20" selected>20点先取</option>
+        </select>
+        <br>
+        <button onclick="startGame()">ゲーム開始</button>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="gameScreen">
+        <!-- スコアボード -->
+        <div class="scoreboard">
+            <div class="player-score player-side" id="playerScoreBoard">
+                <h2>プレイヤー</h2>
+                <div class="score"><span id="playerScore">0</span> 点</div>
+            </div>
+            <div class="player-score cpu-side" id="cpuScoreBoard">
+                <h2>CPU</h2>
+                <div class="score"><span id="cpuScore">0</span> 点</div>
+            </div>
+        </div>
+
+        <!-- フィールド -->
+        <div class="field-container">
+            <div class="field">
+                <div class="ball-position" id="ballPosition">🏉</div>
+            </div>
+            <div class="field-markers">
+                <span>トライ</span>
+                <span style="position: absolute; left: 22%;">22</span>
+                <span style="position: absolute; left: 40%;">10</span>
+                <span style="position: absolute; left: 50%; transform: translateX(-50%);">HL</span>
+                <span style="position: absolute; right: 40%;">10</span>
+                <span style="position: absolute; right: 22%;">22</span>
+                <span>トライ</span>
+            </div>
+        </div>
+
+        <!-- 実況ログ -->
+        <div class="commentary">
+            <div class="commentary-log" id="commentaryLog"></div>
+        </div>
+
+        <!-- 手札 -->
+        <div class="cards-container" id="cardsContainer">
+            <h3 id="handTitle">あなたの手札</h3>
+            <div class="hand" id="hand"></div>
+        </div>
+
+        <!-- 役選択 -->
+        <div class="combinations" id="combinationsPanel" style="display: none;">
+            <h3>使える技</h3>
+            <div class="combination-list" id="combinationList"></div>
+        </div>
+    </div>
+
+    <!-- ポップアップ -->
+    <div class="popup-overlay" id="popupOverlay" onclick="closePopup()">
+        <div class="popup" id="popup" onclick="event.stopPropagation()">
+            <h2 id="popupTitle"></h2>
+            <p id="popupMessage"></p>
+            <div id="popupContent"></div>
+
+        </div>
+    </div>
+
+    <!-- 勝利画面 -->
+    <div id="victoryScreen">
+        <h1 id="victoryMessage"></h1>
+        <button onclick="location.reload()">もう一度プレイ</button>
+    </div>
+
+    <script>
+        // ポジション定義
+        const POSITIONS = {
+            'PR': 'プロップ',
+            'HO': 'フッカー',
+            'LO': 'ロック',
+            'FL': 'フランカー',
+            'No.8': 'ナンバーエイト',
+            'SH': 'スクラムハーフ',
+            'SO': 'スタンドオフ',
+            'CTB': 'センター',
+            'WTB': 'ウイング',
+            'FB': 'フルバック'
+        };
+
+        // 役定義（同じポジションを複数使う役は削除）
+        const COMBINATIONS = [
+            // 3枚技（8-10m）
+            { name: 'ゴリゴリスクラム', cards: ['PR', 'HO', 'PR'], distance: 8 },
+            { name: 'ツインタワー', cards: ['HO', 'LO', 'LO'], distance: 8 },
+            { name: '抜群の機動力', cards: ['FL', 'No.8', 'FL'], distance: 9 },
+            { name: 'タイトファイブ', cards: ['PR', 'HO', 'LO'], distance: 8 },
+            { name: '黄金のフロントスリー', cards: ['SO', 'CTB', 'CTB'], distance: 9 },
+            { name: '大外展開', cards: ['SO', 'CTB', 'WTB'], distance: 10 },
+            { name: '音速のバックスリー', cards: ['WTB', 'FB', 'WTB'], distance: 10 },
+            { name: 'フルバックライン参加', cards: ['SH', 'SO', 'FB'], distance: 9 },
+            { name: 'スクラムサイドアタック', cards: ['FL', 'No.8', 'SH'], distance: 9 },
+            { name: 'ダブルスタンドオフ', cards: ['SH', 'SO', 'FB'], distance: 9 },
+            { name: '超速ブレイクダウン', cards: ['FL', 'SH', 'CTB'], distance: 10 },
+            { name: 'エッジアタック', cards: ['FL', 'No.8', 'WTB'], distance: 10 },
+            
+            // 4枚技（13-17m）
+            { name: '9シェイプ', cards: ['PR', 'HO', 'LO', 'SH'], distance: 13 },
+            { name: 'スクラム&ドライブ', cards: ['PR', 'HO', 'LO', 'No.8'], distance: 14 },
+            { name: 'ラインアウトモール', cards: ['HO', 'LO', 'FL', 'No.8'], distance: 14 },
+            { name: 'フォワードラッシュ', cards: ['PR', 'FL', 'FL', 'No.8'], distance: 13 },
+            { name: '華麗なパスワーク', cards: ['SO', 'CTB', 'WTB', 'FB'], distance: 16 },
+            { name: 'センター無双', cards: ['SH', 'SO', 'CTB', 'CTB'], distance: 15 },
+            { name: 'ワイド展開', cards: ['SH', 'CTB', 'WTB', 'FB'], distance: 15 },
+            { name: 'キックパス', cards: ['SO', 'SO', 'WTB', 'FB'], distance: 16 },
+            { name: 'クイックリサイクル', cards: ['FL', 'No.8', 'SH', 'SO'], distance: 15 },
+            { name: 'ブラインドサイド', cards: ['PR', 'FL', 'SH', 'WTB'], distance: 14 },
+            { name: 'ペネトレーション', cards: ['LO', 'No.8', 'CTB', 'WTB'], distance: 16 },
+            { name: '10シェイプ', cards: ['HO', 'LO', 'FL', 'SO'], distance: 17 },
+            
+            // 5枚技（20-24m）
+            { name: 'フォワード制圧', cards: ['PR', 'HO', 'LO', 'FL', 'No.8'], distance: 21 },
+            { name: 'スーパータイトファイブ', cards: ['PR', 'PR', 'HO', 'LO', 'LO'], distance: 20 },
+            { name: 'パーフェクトライン', cards: ['SH', 'SO', 'CTB', 'WTB', 'FB'], distance: 23 },
+            { name: '表と裏のスーパームーブ', cards: ['SH', 'SO', 'CTB', 'CTB', 'WTB'], distance: 22 },
+            { name: 'チームの背骨', cards: ['HO', 'No.8', 'SH', 'SO', 'FB'], distance: 22 },
+            { name: '誰でもゲインできる男たち', cards: ['PR', 'LO', 'SH', 'CTB', 'WTB'], distance: 21 },
+            { name: '局面を変える男達', cards: ['FL', 'No.8', 'SH', 'SO', 'FB'], distance: 24 }
+        ];
+
+        // ゲーム状態
+        let gameState = {
+            targetTries: 3,
+            playerScore: 0,
+            cpuScore: 0,
+            ballPosition: 50,
+            currentTurn: 'player',
+            playerHand: [],
+            cpuHand: [],
+            slotInterval: null,
+            slotRunning: false,
+            kickoffPhase: false,
+            commentary: [],
+            hasExchanged: false,
+            hasShuffled: false,
+            conversionKicking: false,
+            rouletteRotation: 0,
+            rouletteInterval: null
+        };
+
+        // ポップアップ表示
+        function showPopup(title, message, isTry = false, contentHTML = '', isTurnover = false) {
+            const overlay = document.getElementById('popupOverlay');
+            const popup = document.getElementById('popup');
+            const popupTitle = document.getElementById('popupTitle');
+            const popupMessage = document.getElementById('popupMessage');
+            const popupContent = document.getElementById('popupContent');
+            
+            popupTitle.textContent = title;
+            popupMessage.textContent = message;
+            popupContent.innerHTML = contentHTML;
+            
+            // クラスをリセット
+            popup.className = 'popup';
+            
+            if (isTry) {
+                popup.classList.add('try');
+            } else if (isTurnover) {
+                popup.classList.add('turnover');
+            }
+            
+            overlay.classList.add('show');
+        }
+
+        // ポップアップを閉じる
+        function closePopup() {
+            document.getElementById('popupOverlay').classList.remove('show');
+            document.getElementById('popupContent').innerHTML = '';
+        }
+
+        // 実況追加（最新が下に）
+        function addCommentary(text, type = 'system') {
+            if (text === 'ゲーム開始！') return;
+            gameState.commentary.push({ text, type, time: new Date() });
+            if (gameState.commentary.length > 5) {
+                gameState.commentary.shift();
+            }
+            updateCommentary();
+        }
+
+        // 実況表示更新
+        function updateCommentary() {
+            const log = document.getElementById('commentaryLog');
+            log.innerHTML = '';
+            gameState.commentary.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `commentary-item ${item.type}`;
+                div.textContent = item.text;
+                log.appendChild(div);
+            });
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // 手札表示を更新
+        function renderHand() {
+            const handDiv = document.getElementById('hand');
+            const container = document.getElementById('cardsContainer');
+            const combosPanel = document.getElementById('combinationsPanel');
+            const title = document.getElementById('handTitle');
+            
+            handDiv.innerHTML = '';
+            
+            const currentHand = gameState.currentTurn === 'player' ? gameState.playerHand : gameState.cpuHand;
+            const isPlayerTurn = gameState.currentTurn === 'player';
+            
+            if (isPlayerTurn) {
+                title.textContent = 'あなたの手札';
+                title.className = '';
+                container.className = 'cards-container player-turn';
+                combosPanel.className = 'combinations player-turn';
+            } else {
+                title.textContent = '相手の手札';
+                title.className = 'right';
+                container.className = 'cards-container cpu-turn';
+                combosPanel.className = 'combinations cpu-turn';
+            }
+            
+            currentHand.forEach((card, index) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.innerHTML = `<div class="card-position">${card}</div>`;
+                handDiv.appendChild(cardDiv);
+            });
+        }
+
+        // ランダムカード生成
+        function drawCard() {
+            const positions = Object.keys(POSITIONS);
+            return positions[Math.floor(Math.random() * positions.length)];
+        }
+
+        // 手札を補充
+        function refillHand(hand) {
+            while (hand.length < 7) {
+                hand.push(drawCard());
+            }
+        }
+
+        // ゲーム開始
+        function startGame() {
+            gameState.targetTries = parseInt(document.getElementById('tryCount').value); // 現在は目標得点として使用
+            gameState.playerScore = 0;
+            gameState.cpuScore = 0;
+            gameState.ballPosition = 50;
+            gameState.currentTurn = Math.random() < 0.5 ? 'player' : 'cpu';
+            gameState.playerHand = [];
+            gameState.cpuHand = [];
+            gameState.commentary = [];
+            gameState.hasExchanged = false;
+            gameState.hasShuffled = false;
+            
+            refillHand(gameState.playerHand);
+            refillHand(gameState.cpuHand);
+            
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'block';
+            
+            addCommentary('ゲーム開始！', 'system');
+            updateUI();
+            renderHand();
+            startKickoff();
+        }
+
+        // キックオフ開始
+        function startKickoff() {
+            gameState.kickoffPhase = true;
+            
+            const isPlayerKickoff = gameState.currentTurn === 'player';
+            const kicker = isPlayerKickoff ? 'プレイヤー' : 'CPU';
+            addCommentary(`${kicker}のキックオフ！`, gameState.currentTurn);
+            
+            showKickoffPopup(isPlayerKickoff);
+        }
+
+        // キックオフポップアップ表示
+        function showKickoffPopup(isPlayerKickoff) {
+            const kickoffClass = isPlayerKickoff ? 'player-kickoff' : 'cpu-kickoff';
+            const headerText = isPlayerKickoff ? 'あなたのキックオフ' : 'CPUのキックオフ';
+            const buttonHTML = isPlayerKickoff 
+                ? '<button class="kickoff-button" id="kickButtonPopup">キック！</button>' 
+                : '<p style="color: #666; margin-top: 12px; font-size: 13px; font-weight: 500;">自動でキックします...</p>';
+            
+            const slotHTML = `
+                <div class="kickoff-popup ${kickoffClass}">
+                    <div class="kickoff-header ${kickoffClass}">${headerText}</div>
+                    <div class="slot-container">
+                        <div class="slot-number" id="slot1Popup">1</div>
+                        <div class="slot-number" id="slot2Popup">0</div>
+                    </div>
+                    ${buttonHTML}
+                </div>
+            `;
+            showPopup('', '', false, slotHTML);
+            
+            document.getElementById('popup').onclick = (e) => e.stopPropagation();
+            document.getElementById('popupOverlay').onclick = null;
+            
+            setTimeout(() => {
+                startSlotInPopup(isPlayerKickoff);
+            }, 100);
+        }
+
+        // ポップアップ内でスロット開始
+        function startSlotInPopup(isPlayerKickoff) {
+            gameState.slotRunning = true;
+            
+            gameState.slotInterval = setInterval(() => {
+                const num = Math.floor(Math.random() * 40) + 10;
+                const slot1 = document.getElementById('slot1Popup');
+                const slot2 = document.getElementById('slot2Popup');
+                if (slot1 && slot2) {
+                    slot1.textContent = Math.floor(num / 10);
+                    slot2.textContent = num % 10;
+                }
+            }, 100);
+            
+            if (isPlayerKickoff) {
+                const kickButton = document.getElementById('kickButtonPopup');
+                if (kickButton) {
+                    kickButton.disabled = false;
+                    kickButton.onclick = stopSlotInPopup;
+                }
+            } else {
+                setTimeout(() => {
+                    stopSlotInPopup();
+                }, 2000);
+            }
+        }
+
+        // ポップアップ内でスロット停止
+        function stopSlotInPopup() {
+            if (!gameState.slotRunning) return;
+            
+            clearInterval(gameState.slotInterval);
+            gameState.slotRunning = false;
+            
+            const kickButton = document.getElementById('kickButtonPopup');
+            if (kickButton) {
+                kickButton.disabled = true;
+            }
+            
+            const slot1 = document.getElementById('slot1Popup');
+            const slot2 = document.getElementById('slot2Popup');
+            if (slot1 && slot2) {
+                const tens = parseInt(slot1.textContent);
+                const ones = parseInt(slot2.textContent);
+                const distance = tens * 10 + ones;
+                
+                setTimeout(() => {
+                    closePopup();
+                    document.getElementById('popupOverlay').onclick = closePopup;
+                    setTimeout(() => {
+                        executeKickoff(distance);
+                    }, 300);
+                }, 1000);
+            }
+        }
+
+        // キックオフ実行
+        function executeKickoff(distance) {
+            if (gameState.currentTurn === 'player') {
+                gameState.ballPosition += distance;
+                addCommentary(`プレイヤーが${distance}mキック！相手ボールに`, 'player');
+                gameState.currentTurn = 'cpu';
+            } else {
+                gameState.ballPosition -= distance;
+                addCommentary(`CPUが${distance}mキック！相手ボールに`, 'cpu');
+                gameState.currentTurn = 'player';
+            }
+            
+            if (!checkTry()) {
+                setTimeout(() => {
+                    gameState.kickoffPhase = false;
+                    gameState.hasExchanged = false;
+                    gameState.hasShuffled = false;
+                    startTurn();
+                }, 2000);
+            }
+        }
+
+        // ターン開始
+        function startTurn() {
+            if (gameState.currentTurn === 'cpu') {
+                cpuTurn();
+            } else {
+                playerTurn();
+            }
+        }
+
+        // プレイヤーターン
+        function playerTurn() {
+            addCommentary('あなたのターン', 'player');
+            renderHand();
+            checkCombinations();
+        }
+
+        // CPUターン
+        function cpuTurn() {
+            addCommentary('CPUのターン...', 'cpu');
+            renderHand();
+            
+            setTimeout(() => {
+                const combos = findAllCombinations(gameState.cpuHand);
+                
+                if (combos.length > 0) {
+                    // CPUの全ての役を表示
+                    showCPUCombinations(combos);
+                    
+                    setTimeout(() => {
+                        combos.sort((a, b) => b.distance - a.distance);
+                        const bestCombo = combos[0];
+                        
+                        // CPUが選んだ役をハイライト
+                        highlightCPUChoice(bestCombo);
+                        
+                        addCommentary(`CPU「${bestCombo.name}」で${bestCombo.distance}m前進！`, 'cpu');
+                        
+                        setTimeout(() => {
+                            // プレイヤーと同じアニメーションを適用
+                            const cardElements = document.querySelectorAll('#hand .card');
+                            const usedIndices = [];
+                            
+                            // 使用するカードのインデックスを取得
+                            const cardsToRemove = [...bestCombo.cards];
+                            cardsToRemove.forEach(card => {
+                                const index = gameState.cpuHand.indexOf(card);
+                                if (index > -1 && !usedIndices.includes(index)) {
+                                    usedIndices.push(index);
+                                    cardElements[index].classList.add('using');
+                                }
+                            });
+                            
+                            setTimeout(() => {
+                                // カードを消すアニメーション
+                                usedIndices.forEach(index => {
+                                    cardElements[index].classList.remove('using');
+                                    cardElements[index].classList.add('disappearing');
+                                });
+                                
+                                setTimeout(() => {
+                                    // カードを削除
+                                    usedIndices.sort((a, b) => b - a);
+                                    usedIndices.forEach(index => {
+                                        gameState.cpuHand.splice(index, 1);
+                                    });
+                                    
+                                    gameState.ballPosition -= bestCombo.distance;
+                                    
+                                    const oldLength = gameState.cpuHand.length;
+                                    refillHand(gameState.cpuHand);
+                                    
+                                    renderHand();
+                                    
+                                    // 補充されたカードのアニメーション
+                                    setTimeout(() => {
+                                        const allCards = document.querySelectorAll('#hand .card');
+                                        allCards.forEach((card, idx) => {
+                                            if (idx >= oldLength) {
+                                                card.classList.add('appearing');
+                                            }
+                                        });
+                                    }, 50);
+                            
+                                    if (!checkTry()) {
+                                        setTimeout(() => {
+                                            const newCombos = findAllCombinations(gameState.cpuHand);
+                                            if (newCombos.length > 0) {
+                                                cpuTurn();
+                                            } else {
+                                                // 「使える技がありません」を表示
+                                                const comboPanel = document.getElementById('combinationsPanel');
+                                                const comboList = document.getElementById('combinationList');
+                                                comboPanel.style.display = 'block';
+                                                comboList.innerHTML = `
+                                                    <div class="no-combos-message">使える技がありません</div>
+                                                `;
+                                                addCommentary('CPUは役が出せません。ターンオーバー', 'cpu');
+                                                
+                                                // 1秒後にポップアップ表示
+                                                setTimeout(() => {
+                                                    showPopup('ターンオーバー', 'CPUのターン終了', false, '', true);
+                                                    setTimeout(() => {
+                                                        closePopup();
+                                                        switchTurn();
+                                                    }, 2000);
+                                                }, 1000);
+                                            }
+                                        }, 2000);
+                                    }
+                                }, 500);
+                            }, 500);
+                        }, 1500);
+                    }, 1500);
+                } else {
+                    // 役がない場合、シャッフルボタンを表示
+                    const comboPanel = document.getElementById('combinationsPanel');
+                    const comboList = document.getElementById('combinationList');
+                    comboPanel.style.display = 'block';
+                    
+                    if (!gameState.hasShuffled) {
+                        comboList.innerHTML = `
+                            <div class="no-combos-message">使える技がありません</div>
+                            <button class="shuffle-button" id="cpuShuffleButton" disabled>
+                                CPUがシャッフル中...
+                            </button>
+                        `;
+                        
+                        setTimeout(() => {
+                            addCommentary('CPUがシャッフル', 'cpu');
+                            gameState.cpuHand = [];
+                            refillHand(gameState.cpuHand);
+                            gameState.hasShuffled = true;
+                            renderHand();
+                            
+                            const newCombos = findAllCombinations(gameState.cpuHand);
+                            
+                            if (newCombos.length > 0) {
+                                setTimeout(() => {
+                                    cpuTurn();
+                                }, 1500);
+                            } else {
+                                comboList.innerHTML = `
+                                    <div class="no-combos-message">使える技がありません</div>
+                                `;
+                                addCommentary('CPUシャッフル後も役なし。ターンオーバー', 'cpu');
+                                
+                                // 1秒後にポップアップ表示
+                                setTimeout(() => {
+                                    showPopup('ターンオーバー', 'CPUのターン終了', false, '', true);
+                                    setTimeout(() => {
+                                        closePopup();
+                                        gameState.hasShuffled = false;
+                                        switchTurn();
+                                    }, 2000);
+                                }, 1000);
+                            }
+                        }, 2000);
+                    } else {
+                        comboList.innerHTML = `
+                            <div class="no-combos-message">使える技がありません</div>
+                        `;
+                        addCommentary('CPUシャッフル後も役なし。ターンオーバー', 'cpu');
+                        
+                        // 1秒後にポップアップ表示
+                        setTimeout(() => {
+                            showPopup('ターンオーバー', 'CPUのターン終了', false, '', true);
+                            setTimeout(() => {
+                                closePopup();
+                                gameState.hasShuffled = false;
+                                switchTurn();
+                            }, 2000);
+                        }, 1000);
+                    }
+                }
+            }, 1500);
+        }
+
+        // 役の検索
+        function findAllCombinations(hand) {
+            const found = [];
+            
+            COMBINATIONS.forEach(combo => {
+                const needed = [...combo.cards];
+                const available = [...hand];
+                const used = [];
+                
+                let canMake = true;
+                for (let card of needed) {
+                    const index = available.indexOf(card);
+                    if (index > -1) {
+                        used.push(available[index]);
+                        available.splice(index, 1);
+                    } else {
+                        canMake = false;
+                        break;
+                    }
+                }
+                
+                if (canMake) {
+                    found.push({
+                        ...combo,
+                        usedCards: used
+                    });
+                }
+            });
+            
+            return found;
+        }
+
+        // CPUの全ての役を表示
+        function showCPUCombinations(combos) {
+            const comboPanel = document.getElementById('combinationsPanel');
+            const comboList = document.getElementById('combinationList');
+            comboPanel.style.display = 'block';
+            comboList.innerHTML = '';
+            
+            combos.sort((a, b) => b.distance - a.distance);
+            
+            combos.forEach(combo => {
+                const div = document.createElement('div');
+                div.className = 'combination-item';
+                div.style.borderColor = 'var(--cpu-color)';
+                div.innerHTML = `
+                    <span class="combination-name">${combo.name}</span>
+                    <span class="combination-cards">${combo.cards.join(' + ')}</span>
+                    <span class="combination-distance">${combo.distance}m前進</span>
+                `;
+                div.dataset.comboName = combo.name;
+                comboList.appendChild(div);
+            });
+        }
+
+        // CPUが選んだ役をハイライト
+        function highlightCPUChoice(combo) {
+            const items = document.querySelectorAll('.combination-item');
+            items.forEach(item => {
+                if (item.dataset.comboName === combo.name) {
+                    item.classList.add('selected');
+                }
+            });
+        }
+
+        // 役チェック
+        function checkCombinations() {
+            const combos = findAllCombinations(gameState.playerHand);
+            const comboPanel = document.getElementById('combinationsPanel');
+            const comboList = document.getElementById('combinationList');
+            comboList.innerHTML = '';
+            
+            if (combos.length > 0) {
+                comboPanel.style.display = 'block';
+                
+                combos.sort((a, b) => b.distance - a.distance);
+                
+                combos.forEach((combo, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'combination-item';
+                    div.innerHTML = `
+                        <span class="combination-name">${combo.name}</span>
+                        <span class="combination-cards">${combo.cards.join(' + ')}</span>
+                        <span class="combination-distance">${combo.distance}m前進</span>
+                    `;
+                    div.dataset.comboName = combo.name;
+                    div.onclick = () => {
+                        // すべての選択を解除
+                        document.querySelectorAll('.combination-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        // このアイテムを選択
+                        div.classList.add('selected');
+                        
+                        // 少し待ってから実行
+                        setTimeout(() => {
+                            addCommentary(`「${combo.name}」で${combo.distance}m前進！`, 'player');
+                            executeCombination(combo);
+                        }, 500);
+                    };
+                    comboList.appendChild(div);
+                });
+            } else {
+                comboPanel.style.display = 'block';
+                const canShuffle = !gameState.hasShuffled;
+                comboList.innerHTML = `
+                    <div class="no-combos-message">使える技がありません</div>
+                    <button class="shuffle-button" id="shuffleButton" onclick="shuffleHand()" ${canShuffle ? '' : 'disabled'}>
+                        ${canShuffle ? '出せる役がないためカードシャッフル（1回のみ）' : 'シャッフル済み'}
+                    </button>
+                `;
+            }
+        }
+
+        // シャッフル実行
+        function shuffleHand() {
+            if (gameState.hasShuffled) return;
+            
+            addCommentary('手札をシャッフル！', 'player');
+            gameState.playerHand = [];
+            refillHand(gameState.playerHand);
+            gameState.hasShuffled = true;
+            
+            renderHand();
+            
+            setTimeout(() => {
+                const newCards = document.querySelectorAll('#hand .card');
+                newCards.forEach(card => {
+                    card.classList.add('appearing');
+                });
+            }, 50);
+            
+            const newCombos = findAllCombinations(gameState.playerHand);
+            if (newCombos.length > 0) {
+                checkCombinations();
+            } else {
+                const comboPanel = document.getElementById('combinationsPanel');
+                const comboList = document.getElementById('combinationList');
+                comboPanel.style.display = 'block';
+                comboList.innerHTML = `
+                    <div class="no-combos-message">使える技がありません</div>
+                `;
+                addCommentary('シャッフル後も役なし。ターンオーバー', 'player');
+                
+                // 1秒後にポップアップ表示
+                setTimeout(() => {
+                    showPopup('ターンオーバー', 'あなたのターン終了', false, '', true);
+                    setTimeout(() => {
+                        closePopup();
+                        gameState.hasShuffled = false;
+                        switchTurn();
+                    }, 2000);
+                }, 1000);
+            }
+        }
+
+        // 役を実行（アニメーション付き）
+        function executeCombination(combo) {
+            const cardsToRemove = [...combo.cards];
+            const cardElements = document.querySelectorAll('#hand .card');
+            const usedIndices = [];
+            
+            cardsToRemove.forEach(card => {
+                const index = gameState.playerHand.indexOf(card);
+                if (index > -1 && !usedIndices.includes(index)) {
+                    usedIndices.push(index);
+                    cardElements[index].classList.add('using');
+                }
+            });
+            
+            setTimeout(() => {
+                usedIndices.forEach(index => {
+                    cardElements[index].classList.remove('using');
+                    cardElements[index].classList.add('disappearing');
+                });
+                
+                setTimeout(() => {
+                    usedIndices.sort((a, b) => b - a);
+                    usedIndices.forEach(index => {
+                        gameState.playerHand.splice(index, 1);
+                    });
+                    
+                    gameState.ballPosition += combo.distance;
+                    
+                    const oldLength = gameState.playerHand.length;
+                    refillHand(gameState.playerHand);
+                    const newCardsCount = gameState.playerHand.length - oldLength;
+                    
+                    renderHand();
+                    
+                    // 新しいカードを最初は非表示にする
+                    const allCards = document.querySelectorAll('#hand .card');
+                    allCards.forEach((card, idx) => {
+                        if (idx >= oldLength) {
+                            card.style.opacity = '0';
+                        }
+                    });
+                    
+                    setTimeout(() => {
+                        allCards.forEach((card, idx) => {
+                            if (idx >= oldLength) {
+                                card.style.opacity = '1';
+                                card.classList.add('appearing');
+                            }
+                        });
+                    }, 50);
+                    
+                    if (!checkTry()) {
+                        setTimeout(() => {
+                            const newCombos = findAllCombinations(gameState.playerHand);
+                            if (newCombos.length > 0) {
+                                playerTurn();
+                            } else {
+                                const comboPanel = document.getElementById('combinationsPanel');
+                                const comboList = document.getElementById('combinationList');
+                                comboPanel.style.display = 'block';
+                                comboList.innerHTML = `
+                                    <div class="no-combos-message">使える技がありません</div>
+                                `;
+                                addCommentary('役が出せません。ターンオーバー', 'player');
+                                
+                                // 1秒後にポップアップ表示
+                                setTimeout(() => {
+                                    showPopup('ターンオーバー', 'あなたのターン終了', false, '', true);
+                                    setTimeout(() => {
+                                        closePopup();
+                                        gameState.hasShuffled = false;
+                                        switchTurn();
+                                    }, 2000);
+                                }, 1000);
+                            }
+                        }, 1500);
+                    }
+                }, 500);
+            }, 500);
+        }
+
+        // ターン交代
+        function switchTurn() {
+            gameState.currentTurn = gameState.currentTurn === 'player' ? 'cpu' : 'player';
+            gameState.hasShuffled = false;
+            updateUI();
+            startTurn();
+        }
+
+        // トライチェック
+        function checkTry() {
+            if (gameState.ballPosition >= 100) {
+                // トライ5点
+                gameState.playerScore += 5;
+                addCommentary('トライ！5点獲得！', 'player');
+                
+                const popup = document.getElementById('popup');
+                popup.className = 'popup try player-try';
+                showPopup('トライ！！', `プレイヤー ${gameState.playerScore} - ${gameState.cpuScore} CPU`, false);
+                
+                setTimeout(() => {
+                    closePopup();
+                    // コンバージョンキックへ
+                    setTimeout(() => startConversionKick('player'), 500);
+                }, 2000);
+                return true;
+            } else if (gameState.ballPosition <= 0) {
+                // トライ5点
+                gameState.cpuScore += 5;
+                addCommentary('CPUがトライ！5点獲得！', 'cpu');
+                
+                const popup = document.getElementById('popup');
+                popup.className = 'popup try cpu-try';
+                showPopup('CPUトライ', `プレイヤー ${gameState.playerScore} - ${gameState.cpuScore} CPU`, false);
+                
+                setTimeout(() => {
+                    closePopup();
+                    // コンバージョンキックへ
+                    setTimeout(() => startConversionKick('cpu'), 500);
+                }, 2000);
+                return true;
+            }
+            updateUI();
+            return false;
+        }
+
+        // コンバージョンキック開始
+        function startConversionKick(team) {
+            gameState.conversionKicking = true;
+            const successRate = Math.floor(Math.random() * 61) + 20; // 20-80%
+            const teamName = team === 'player' ? 'プレイヤー' : 'CPU';
+            const isPlayerKick = team === 'player';
+            const teamColor = team === 'player' ? 'var(--player-color)' : 'var(--cpu-color)';
+            
+            const buttonHTML = isPlayerKick 
+                ? `<button class="conversion-button" id="conversionStopBtn" onclick="stopConversionKick(${successRate}, '${team}')">ストップ！</button>`
+                : `<p style="color: #666; margin-top: 12px; font-size: 13px; font-weight: 500;">自動でキックします...</p>`;
+            
+            const slotHTML = `
+                <div style="text-align: center;">
+                    <h3 style="margin-bottom: 20px; color: #333; font-size: 18px;">コンバージョンキック</h3>
+                    <div style="display: flex; justify-content: center; gap: 10px; margin: 25px 0;">
+                        <div style="width: 120px; height: 80px; background: white; border: 3px solid #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.2);" id="convSlotText">成功</div>
+                    </div>
+                    ${buttonHTML}
+                </div>
+            `;
+            
+            showPopup('', '', false, slotHTML);
+            
+            // スロット回転開始（成功/失敗を交互に表示）
+            gameState.slotRunning = true;
+            let slotState = 0;
+            const playerColor = getComputedStyle(document.documentElement).getPropertyValue('--player-color').trim();
+            const cpuColor = getComputedStyle(document.documentElement).getPropertyValue('--cpu-color').trim();
+            const currentTeamColor = team === 'player' ? playerColor : cpuColor;
+            
+            gameState.slotInterval = setInterval(() => {
+                const slotText = document.getElementById('convSlotText');
+                if (slotText) {
+                    slotState = (slotState + 1) % 2;
+                    slotText.textContent = slotState === 0 ? '成功' : '失敗';
+                    slotText.style.color = slotState === 0 ? currentTeamColor : '#9E9E9E';
+                }
+            }, 100);
+            
+            // CPUの場合は自動停止
+            if (!isPlayerKick) {
+                setTimeout(() => {
+                    stopConversionKick(successRate, team);
+                }, 2000);
+            }
+        }
+
+        // コンバージョンキック停止
+        function stopConversionKick(successRate, team) {
+            if (!gameState.conversionKicking) return;
+            
+            clearInterval(gameState.slotInterval);
+            gameState.conversionKicking = false;
+            gameState.slotRunning = false;
+            
+            const stopBtn = document.getElementById('conversionStopBtn');
+            if (stopBtn) {
+                stopBtn.disabled = true;
+            }
+            
+            // ランダムで成功判定
+            const randomValue = Math.floor(Math.random() * 100);
+            const isSuccess = randomValue < successRate;
+            
+            // 停止時の表示
+            const slotText = document.getElementById('convSlotText');
+            if (slotText) {
+                const playerColor = getComputedStyle(document.documentElement).getPropertyValue('--player-color').trim();
+                const cpuColor = getComputedStyle(document.documentElement).getPropertyValue('--cpu-color').trim();
+                const currentTeamColor = team === 'player' ? playerColor : cpuColor;
+                
+                slotText.textContent = isSuccess ? '成功' : '失敗';
+                slotText.style.color = isSuccess ? currentTeamColor : '#9E9E9E';
+            }
+            
+            setTimeout(() => {
+                closePopup();
+                
+                const teamClass = team === 'player' ? 'player-try' : 'cpu-try';
+                
+                if (isSuccess) {
+                    // 成功: 2点追加
+                    if (team === 'player') {
+                        gameState.playerScore += 2;
+                        addCommentary('コンバージョン成功！+2点', 'player');
+                    } else {
+                        gameState.cpuScore += 2;
+                        addCommentary('CPUコンバージョン成功！+2点', 'cpu');
+                    }
+                    
+                    const popup = document.getElementById('popup');
+                    const teamClass = team === 'player' ? 'player-conversion' : 'cpu-conversion';
+                    popup.className = `popup conversion-success ${teamClass}`;
+                    showPopup('成功！', `コンバージョンキック成功！+2点`, false);
+                } else {
+                    // 失敗
+                    addCommentary('コンバージョン失敗', team);
+                    
+                    const popup = document.getElementById('popup');
+                    popup.className = 'popup conversion-fail';
+                    showPopup('失敗...', 'コンバージョンキック失敗', false);
+                }
+                
+                updateUI();
+                
+                setTimeout(() => {
+                    closePopup();
+                    
+                    // ゲーム終了チェック
+                    const targetScore = gameState.targetTries; // 目標得点を直接使用
+                    if (gameState.playerScore >= targetScore) {
+                        setTimeout(() => endGame('player'), 500);
+                    } else if (gameState.cpuScore >= targetScore) {
+                        setTimeout(() => endGame('cpu'), 500);
+                    } else {
+                        setTimeout(() => resetField(team === 'player' ? 'cpu' : 'player'), 500);
+                    }
+                }, 2000);
+            }, 1000);
+        }
+
+        // フィールドリセット
+        function resetField(kickoffTurn) {
+            gameState.ballPosition = 50;
+            gameState.currentTurn = kickoffTurn;
+            gameState.hasShuffled = false;
+            updateUI();
+            startKickoff();
+        }
+
+        // ゲーム終了
+        function endGame(winner) {
+            document.getElementById('gameScreen').style.display = 'none';
+            document.getElementById('victoryScreen').style.display = 'block';
+            
+            if (winner === 'player') {
+                document.getElementById('victoryMessage').textContent = 'あなたの勝利！！';
+            } else {
+                document.getElementById('victoryMessage').textContent = 'CPUの勝利...';
+            }
+        }
+
+        // UI更新
+        function updateUI() {
+            document.getElementById('playerScore').textContent = gameState.playerScore;
+            document.getElementById('cpuScore').textContent = gameState.cpuScore;
+            
+            if (gameState.currentTurn === 'player') {
+                document.getElementById('playerScoreBoard').classList.add('active');
+                document.getElementById('cpuScoreBoard').classList.remove('active');
+            } else {
+                document.getElementById('playerScoreBoard').classList.remove('active');
+                document.getElementById('cpuScoreBoard').classList.add('active');
+            }
+            
+            const ballElement = document.getElementById('ballPosition');
+            const percentage = gameState.ballPosition;
+            ballElement.style.left = percentage + '%';
+        }
+    </script>
+</body>
+</html>
