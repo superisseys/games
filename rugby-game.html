@@ -457,6 +457,11 @@
             color: #1e5128;
             line-height: 1;
         }
+        
+        .card-position.kick {
+            color: #FF1493;
+            font-size: 12px;
+        }
 
         /* 役選択 */
         .combinations {
@@ -869,11 +874,16 @@
             'SO': 'スタンドオフ',
             'CTB': 'センター',
             'WTB': 'ウイング',
-            'FB': 'フルバック'
+            'FB': 'フルバック',
+            'KICK': 'KICK'
         };
 
         // 役定義（同じポジションを複数使う役は削除）
         const COMBINATIONS = [
+            // 特殊技
+            { name: 'KICK', cards: ['KICK'], distance: 35, isKick: true },
+            { name: 'ハイボールキャッチ', cards: ['CTB', 'CTB', 'WTB', 'WTB'], distance: 0 },
+            
             // 3枚技（8-10m）
             { name: 'ゴリゴリスクラム', cards: ['PR', 'HO', 'PR'], distance: 8 },
             { name: 'ツインタワー', cards: ['HO', 'LO', 'LO'], distance: 8 },
@@ -929,7 +939,9 @@
             hasShuffled: false,
             conversionKicking: false,
             rouletteRotation: 0,
-            rouletteInterval: null
+            rouletteInterval: null,
+            usedKick: false,
+            waitingForHighBall: false
         };
 
         // ポップアップ表示
@@ -1012,15 +1024,27 @@
             currentHand.forEach((card, index) => {
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card';
-                cardDiv.innerHTML = `<div class="card-position">${card}</div>`;
+                const positionClass = card === 'KICK' ? 'card-position kick' : 'card-position';
+                cardDiv.innerHTML = `<div class="${positionClass}">${card}</div>`;
                 handDiv.appendChild(cardDiv);
             });
         }
 
         // ランダムカード生成
         function drawCard() {
-            const positions = Object.keys(POSITIONS);
-            return positions[Math.floor(Math.random() * positions.length)];
+            // 通常カード10種類 + KICK（1/5の確率）
+            // 合計重み: 10 + 0.2 = 10.2
+            // 各通常カード: 約9.8%, KICK: 約2%
+            const normalPositions = ['PR', 'HO', 'LO', 'FL', 'No.8', 'SH', 'SO', 'CTB', 'WTB', 'FB'];
+            const random = Math.random() * 10.2; // 0 ~ 10.2
+            
+            if (random < 10) {
+                // 通常カード (0 ~ 10)
+                return normalPositions[Math.floor(random)];
+            } else {
+                // KICK (10 ~ 10.2)
+                return 'KICK';
+            }
         }
 
         // 手札を補充
@@ -1216,11 +1240,21 @@
                             
                             // 使用するカードのインデックスを取得
                             const cardsToRemove = [...bestCombo.cards];
+                            // 同じカードを複数使う場合に対応
                             cardsToRemove.forEach(card => {
-                                const index = gameState.cpuHand.indexOf(card);
-                                if (index > -1 && !usedIndices.includes(index)) {
-                                    usedIndices.push(index);
-                                    cardElements[index].classList.add('using');
+                                let searchStart = 0;
+                                let index = -1;
+                                
+                                // 未使用のインデックスを探す
+                                while (searchStart < gameState.cpuHand.length) {
+                                    index = gameState.cpuHand.indexOf(card, searchStart);
+                                    if (index > -1 && !usedIndices.includes(index)) {
+                                        usedIndices.push(index);
+                                        cardElements[index].classList.add('using');
+                                        break;
+                                    }
+                                    searchStart = index + 1;
+                                    if (index === -1) break;
                                 }
                             });
                             
@@ -1240,6 +1274,18 @@
                                     
                                     gameState.ballPosition -= bestCombo.distance;
                                     
+                                    // ボール位置を0-100の範囲に制限
+                                    if (gameState.ballPosition > 100) {
+                                        gameState.ballPosition = 100;
+                                    } else if (gameState.ballPosition < 0) {
+                                        gameState.ballPosition = 0;
+                                    }
+                                    
+                                    // KICKを使った場合フラグを立てる
+                                    if (bestCombo.isKick) {
+                                        gameState.usedKick = true;
+                                    }
+                                    
                                     const oldLength = gameState.cpuHand.length;
                                     refillHand(gameState.cpuHand);
                                     
@@ -1256,30 +1302,38 @@
                                     }, 50);
                             
                                     if (!checkTry()) {
-                                        setTimeout(() => {
-                                            const newCombos = findAllCombinations(gameState.cpuHand);
-                                            if (newCombos.length > 0) {
-                                                cpuTurn();
-                                            } else {
-                                                // 「使える技がありません」を表示
-                                                const comboPanel = document.getElementById('combinationsPanel');
-                                                const comboList = document.getElementById('combinationList');
-                                                comboPanel.style.display = 'block';
-                                                comboList.innerHTML = `
-                                                    <div class="no-combos-message">使える技がありません</div>
-                                                `;
-                                                addCommentary('CPUは役が出せません。ターンオーバー', 'cpu');
-                                                
-                                                // 1秒後にポップアップ表示
-                                                setTimeout(() => {
-                                                    showPopup('ターンオーバー', 'CPUのターン終了', false, '', true);
+                                        // KICK技の場合は相手ボールに切り替え（ゴールに入らなかった場合）
+                                        if (bestCombo.isKick) {
+                                            setTimeout(() => {
+                                                gameState.hasShuffled = false;
+                                                switchTurn();
+                                            }, 500);
+                                        } else {
+                                            setTimeout(() => {
+                                                const newCombos = findAllCombinations(gameState.cpuHand);
+                                                if (newCombos.length > 0) {
+                                                    cpuTurn();
+                                                } else {
+                                                    // 「使える技がありません」を表示
+                                                    const comboPanel = document.getElementById('combinationsPanel');
+                                                    const comboList = document.getElementById('combinationList');
+                                                    comboPanel.style.display = 'block';
+                                                    comboList.innerHTML = `
+                                                        <div class="no-combos-message">使える技がありません</div>
+                                                    `;
+                                                    addCommentary('CPUは役が出せません。ターンオーバー', 'cpu');
+                                                    
+                                                    // 1秒後にポップアップ表示
                                                     setTimeout(() => {
-                                                        closePopup();
-                                                        switchTurn();
-                                                    }, 2000);
-                                                }, 1000);
-                                            }
-                                        }, 2000);
+                                                        showPopup('ターンオーバー', 'CPUのターン終了', false, '', true);
+                                                        setTimeout(() => {
+                                                            closePopup();
+                                                            switchTurn();
+                                                        }, 2000);
+                                                    }, 1000);
+                                                }
+                                            }, 2000);
+                                        }
                                     }
                                 }, 500);
                             }, 500);
@@ -1511,11 +1565,21 @@
             const cardElements = document.querySelectorAll('#hand .card');
             const usedIndices = [];
             
+            // 同じカードを複数使う場合に対応
             cardsToRemove.forEach(card => {
-                const index = gameState.playerHand.indexOf(card);
-                if (index > -1 && !usedIndices.includes(index)) {
-                    usedIndices.push(index);
-                    cardElements[index].classList.add('using');
+                let searchStart = 0;
+                let index = -1;
+                
+                // 未使用のインデックスを探す
+                while (searchStart < gameState.playerHand.length) {
+                    index = gameState.playerHand.indexOf(card, searchStart);
+                    if (index > -1 && !usedIndices.includes(index)) {
+                        usedIndices.push(index);
+                        cardElements[index].classList.add('using');
+                        break;
+                    }
+                    searchStart = index + 1;
+                    if (index === -1) break;
                 }
             });
             
@@ -1532,6 +1596,41 @@
                     });
                     
                     gameState.ballPosition += combo.distance;
+                    
+                    // ボール位置を0-100の範囲に制限
+                    if (gameState.ballPosition > 100) {
+                        gameState.ballPosition = 100;
+                    } else if (gameState.ballPosition < 0) {
+                        gameState.ballPosition = 0;
+                    }
+                    
+                    // KICKを使った場合フラグを立てる
+                    if (combo.isKick) {
+                        gameState.usedKick = true;
+                    }
+                    
+                    // ハイボールキャッチを使った場合、トライを成立させる
+                    if (combo.name === 'ハイボールキャッチ' && gameState.waitingForHighBall) {
+                        gameState.usedKick = false;
+                        gameState.waitingForHighBall = false;
+                        
+                        // トライ処理
+                        setTimeout(() => {
+                            gameState.playerScore += 5;
+                            addCommentary('ハイボールキャッチ成功！トライ！5点獲得！', 'player');
+                            
+                            const popup = document.getElementById('popup');
+                            popup.className = 'popup try player-try';
+                            showPopup('トライ！！', `プレイヤー ${gameState.playerScore} - ${gameState.cpuScore} CPU`, false);
+                            
+                            setTimeout(() => {
+                                closePopup();
+                                setTimeout(() => startConversionKick('player'), 500);
+                            }, 2000);
+                        }, 500);
+                        
+                        return; // これ以降の処理をスキップ
+                    }
                     
                     const oldLength = gameState.playerHand.length;
                     refillHand(gameState.playerHand);
@@ -1557,30 +1656,38 @@
                     }, 50);
                     
                     if (!checkTry()) {
-                        setTimeout(() => {
-                            const newCombos = findAllCombinations(gameState.playerHand);
-                            if (newCombos.length > 0) {
-                                playerTurn();
-                            } else {
-                                const comboPanel = document.getElementById('combinationsPanel');
-                                const comboList = document.getElementById('combinationList');
-                                comboPanel.style.display = 'block';
-                                comboList.innerHTML = `
-                                    <div class="no-combos-message">使える技がありません</div>
-                                `;
-                                addCommentary('役が出せません。ターンオーバー', 'player');
-                                
-                                // 1秒後にポップアップ表示
-                                setTimeout(() => {
-                                    showPopup('ターンオーバー', 'あなたのターン終了', false, '', true);
+                        // KICK技の場合は相手ボールに切り替え（ゴールに入らなかった場合）
+                        if (combo.isKick) {
+                            setTimeout(() => {
+                                gameState.hasShuffled = false;
+                                switchTurn();
+                            }, 500);
+                        } else {
+                            setTimeout(() => {
+                                const newCombos = findAllCombinations(gameState.playerHand);
+                                if (newCombos.length > 0) {
+                                    playerTurn();
+                                } else {
+                                    const comboPanel = document.getElementById('combinationsPanel');
+                                    const comboList = document.getElementById('combinationList');
+                                    comboPanel.style.display = 'block';
+                                    comboList.innerHTML = `
+                                        <div class="no-combos-message">使える技がありません</div>
+                                    `;
+                                    addCommentary('役が出せません。ターンオーバー', 'player');
+                                    
+                                    // 1秒後にポップアップ表示
                                     setTimeout(() => {
-                                        closePopup();
-                                        gameState.hasShuffled = false;
-                                        switchTurn();
-                                    }, 2000);
-                                }, 1000);
-                            }
-                        }, 1500);
+                                        showPopup('ターンオーバー', 'あなたのターン終了', false, '', true);
+                                        setTimeout(() => {
+                                            closePopup();
+                                            gameState.hasShuffled = false;
+                                            switchTurn();
+                                        }, 2000);
+                                    }, 1000);
+                                }
+                            }, 1500);
+                        }
                     }
                 }, 500);
             }, 500);
@@ -1597,8 +1704,34 @@
         // トライチェック
         function checkTry() {
             if (gameState.ballPosition >= 100) {
-                // トライ5点
+                // KICKで100m到達した場合、ハイボールキャッチが必要
+                if (gameState.usedKick) {
+                    const hasHighBall = findAllCombinations(gameState.playerHand).some(c => c.name === 'ハイボールキャッチ');
+                    
+                    if (hasHighBall) {
+                        // ハイボールキャッチを使わせる
+                        gameState.waitingForHighBall = true;
+                        addCommentary('ハイボールキャッチでトライを成立させてください！', 'player');
+                        playerTurn();
+                        return true;
+                    } else {
+                        // ハイボールキャッチがない場合はターンオーバー（その位置から相手ボール）
+                        gameState.usedKick = false;
+                        addCommentary('キックしたボールが相手に渡ります', 'player');
+                        showPopup('ターンオーバー', 'キックしたボールが相手に渡ります', false, '', true);
+                        setTimeout(() => {
+                            closePopup();
+                            gameState.hasShuffled = false;
+                            switchTurn();
+                        }, 3000);
+                        return true;
+                    }
+                }
+                
+                // 通常のトライ
                 gameState.playerScore += 5;
+                gameState.usedKick = false;
+                gameState.waitingForHighBall = false;
                 addCommentary('トライ！5点獲得！', 'player');
                 
                 const popup = document.getElementById('popup');
@@ -1612,8 +1745,53 @@
                 }, 2000);
                 return true;
             } else if (gameState.ballPosition <= 0) {
-                // トライ5点
+                // CPUのKICKで0m到達した場合、ハイボールキャッチが必要
+                if (gameState.usedKick) {
+                    const hasHighBall = findAllCombinations(gameState.cpuHand).some(c => c.name === 'ハイボールキャッチ');
+                    
+                    if (hasHighBall) {
+                        // CPUが自動的にハイボールキャッチを使う
+                        gameState.waitingForHighBall = true;
+                        addCommentary('CPUがハイボールキャッチでトライを成立させます', 'cpu');
+                        // ハイボールキャッチを実行
+                        const highBallCombo = findAllCombinations(gameState.cpuHand).find(c => c.name === 'ハイボールキャッチ');
+                        if (highBallCombo) {
+                            // カードを消費せずトライへ進む（距離0mなので）
+                            gameState.usedKick = false;
+                            gameState.waitingForHighBall = false;
+                            
+                            // トライ処理
+                            gameState.cpuScore += 5;
+                            addCommentary('CPUがトライ！5点獲得！', 'cpu');
+                            
+                            const popup = document.getElementById('popup');
+                            popup.className = 'popup try cpu-try';
+                            showPopup('CPUトライ', `プレイヤー ${gameState.playerScore} - ${gameState.cpuScore} CPU`, false);
+                            
+                            setTimeout(() => {
+                                closePopup();
+                                setTimeout(() => startConversionKick('cpu'), 500);
+                            }, 2000);
+                        }
+                        return true;
+                    } else {
+                        // ハイボールキャッチがない場合はターンオーバー（その位置から相手ボール）
+                        gameState.usedKick = false;
+                        addCommentary('CPUのキックしたボールが相手に渡ります', 'cpu');
+                        showPopup('ターンオーバー', 'キックしたボールが相手に渡ります', false, '', true);
+                        setTimeout(() => {
+                            closePopup();
+                            gameState.hasShuffled = false;
+                            switchTurn();
+                        }, 3000);
+                        return true;
+                    }
+                }
+                
+                // 通常のトライ
                 gameState.cpuScore += 5;
+                gameState.usedKick = false;
+                gameState.waitingForHighBall = false;
                 addCommentary('CPUがトライ！5点獲得！', 'cpu');
                 
                 const popup = document.getElementById('popup');
