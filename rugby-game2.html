@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -157,15 +158,47 @@
         }
 
         .field {
-            background: linear-gradient(90deg, 
-                #81C784 0%, #81C784 49%, 
-                #fff 49%, #fff 51%, 
-                #81C784 51%, #81C784 100%);
+            background: #81C784;
             height: 45px;
             position: relative;
             border-radius: 8px;
             box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
             border: 2px solid #4CAF50;
+        }
+
+        /* フィールドライン */
+        .field-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: white;
+        }
+
+        .field-line.try-line {
+            width: 3px;
+            background: white;
+        }
+
+        .field-line.line-22 {
+            width: 2px;
+            background: white;
+        }
+
+        .field-line.line-10 {
+            width: 2px;
+            background: repeating-linear-gradient(
+                to bottom,
+                white 0px,
+                white 4px,
+                transparent 4px,
+                transparent 8px
+            );
+        }
+
+        .field-line.halfway {
+            width: 2px;
+            background: white;
         }
 
         .field-markers {
@@ -211,6 +244,11 @@
             font-size: 11px;
             border-left: 3px solid #888;
             color: #333;
+        }
+
+        .commentary-item:last-child {
+            font-size: 13px;
+            font-weight: bold;
         }
 
         .commentary-item.player {
@@ -821,16 +859,25 @@
         <!-- フィールド -->
         <div class="field-container">
             <div class="field">
+                <!-- フィールドライン -->
+                <div class="field-line try-line" style="left: 0;"></div>
+                <div class="field-line line-22" style="left: 18%;"></div>
+                <div class="field-line line-10" style="left: 40%;"></div>
+                <div class="field-line halfway" style="left: 50%;"></div>
+                <div class="field-line line-10" style="left: 60%;"></div>
+                <div class="field-line line-22" style="left: 82%;"></div>
+                <div class="field-line try-line" style="right: 0;"></div>
+                
                 <div class="ball-position" id="ballPosition">🏉</div>
             </div>
             <div class="field-markers">
-                <span>トライ</span>
-                <span style="position: absolute; left: 22%;">22</span>
-                <span style="position: absolute; left: 40%;">10</span>
+                <span style="position: absolute; left: 0%;">トライ</span>
+                <span style="position: absolute; left: 18%; transform: translateX(-50%);">22</span>
+                <span style="position: absolute; left: 40%; transform: translateX(-50%);">10</span>
                 <span style="position: absolute; left: 50%; transform: translateX(-50%);">HL</span>
-                <span style="position: absolute; right: 40%;">10</span>
-                <span style="position: absolute; right: 22%;">22</span>
-                <span>トライ</span>
+                <span style="position: absolute; left: 60%; transform: translateX(-50%);">10</span>
+                <span style="position: absolute; left: 82%; transform: translateX(-50%);">22</span>
+                <span style="position: absolute; right: 0%;">トライ</span>
             </div>
         </div>
 
@@ -887,7 +934,7 @@
         // 役定義（同じポジションを複数使う役は削除）
         const COMBINATIONS = [
             // 特殊技
-            { name: 'KICK', cards: ['KICK'], distance: 35, isKick: true },
+            { name: 'KICK', cards: ['KICK'], distance: 0, isKick: true },
             { name: 'ハイボールキャッチ', cards: ['CTB', 'CTB', 'WTB', 'WTB'], distance: 0, requiresKick: true },
             
             // 3枚技（8-10m）
@@ -1255,8 +1302,6 @@
                         // CPUが選んだ役をハイライト
                         highlightCPUChoice(bestCombo);
                         
-                        addCommentary(`CPU「${bestCombo.name}」で${bestCombo.distance}m前進！`, 'cpu');
-                        
                         setTimeout(() => {
                             // プレイヤーと同じアニメーションを適用
                             const cardElements = document.querySelectorAll('#hand .card');
@@ -1295,7 +1340,16 @@
                                         gameState.cpuHand.splice(index, 1);
                                     });
                                     
-                                    gameState.ballPosition -= bestCombo.distance;
+                                    // KICKの場合はランダム距離（25-45m）
+                                    let actualDistance = bestCombo.distance;
+                                    if (bestCombo.isKick) {
+                                        actualDistance = Math.floor(Math.random() * 21) + 25; // 25-45m
+                                    }
+                                    
+                                    // 実況追加（実際の距離を表示）
+                                    addCommentary(`CPU「${bestCombo.name}」で${actualDistance}m前進！`, 'cpu');
+                                    
+                                    gameState.ballPosition -= actualDistance;
                                     
                                     // ボール位置を0-100の範囲に制限
                                     if (gameState.ballPosition > 100) {
@@ -1332,7 +1386,7 @@
                                             // KICK技の場合は相手ボールに切り替え（ゴールに入らなかった場合）
                                             if (bestCombo.isKick) {
                                                 setTimeout(() => {
-                                                    showPopup('相手ボール', 'キックが決まらず、相手ボールになります', false, '', true);
+                                                    showPopup('ターンオーバー', '相手にボールが渡りました', false, '', true);
                                                     setTimeout(() => {
                                                         closePopup();
                                                         gameState.hasShuffled = false;
@@ -1423,7 +1477,7 @@
                                     
                                     // 1秒後にポップアップ表示
                                     setTimeout(() => {
-                                        showPopup('ターンオーバー', 'CPUのターン終了', false, '', true);
+                                        showPopup('シャッフル失敗', 'ターンオーバー<br>CPUのターン終了', false, '', true);
                                         setTimeout(() => {
                                             closePopup();
                                             gameState.hasShuffled = false;
@@ -1441,7 +1495,7 @@
                         
                         // 1秒後にポップアップ表示
                         setTimeout(() => {
-                            showPopup('ターンオーバー', 'CPUのターン終了', false, '', true);
+                            showPopup('シャッフル失敗', 'ターンオーバー<br>CPUのターン終了', false, '', true);
                             setTimeout(() => {
                                 closePopup();
                                 gameState.hasShuffled = false;
@@ -1560,7 +1614,6 @@
                         
                         // 少し待ってから実行
                         setTimeout(() => {
-                            addCommentary(`「${combo.name}」で${combo.distance}m前進！`, 'player');
                             executeCombination(combo);
                         }, 500);
                     };
@@ -1618,7 +1671,7 @@
                     
                     // 1秒後にポップアップ表示
                     setTimeout(() => {
-                        showPopup('ターンオーバー', 'あなたのターン終了', false, '', true);
+                        showPopup('シャッフル失敗', 'ターンオーバー<br>あなたのターン終了', false, '', true);
                         setTimeout(() => {
                             closePopup();
                             gameState.hasShuffled = false;
@@ -1665,7 +1718,16 @@
                         gameState.playerHand.splice(index, 1);
                     });
                     
-                    gameState.ballPosition += combo.distance;
+                    // KICKの場合はランダム距離（25-45m）
+                    let actualDistance = combo.distance;
+                    if (combo.isKick) {
+                        actualDistance = Math.floor(Math.random() * 21) + 25; // 25-45m
+                    }
+                    
+                    // 実況追加（実際の距離を表示）
+                    addCommentary(`「${combo.name}」で${actualDistance}m前進！`, 'player');
+                    
+                    gameState.ballPosition += actualDistance;
                     
                     // ボール位置を0-100の範囲に制限
                     if (gameState.ballPosition > 100) {
@@ -1736,7 +1798,7 @@
                             // KICK技の場合は相手ボールに切り替え（ゴールに入らなかった場合）
                             if (combo.isKick) {
                                 setTimeout(() => {
-                                    showPopup('相手ボール', 'キックが決まらず、相手ボールになります', false, '', true);
+                                    showPopup('ターンオーバー', '相手にボールが渡りました', false, '', true);
                                     setTimeout(() => {
                                         closePopup();
                                         gameState.hasShuffled = false;
@@ -1805,7 +1867,7 @@
                         // ハイボールキャッチがない場合はターンオーバー（その位置から相手ボール）
                         gameState.usedKick = false;
                         addCommentary('キックしたボールが相手に渡ります', 'player');
-                        showPopup('ターンオーバー', 'キックしたボールが相手に渡ります', false, '', true);
+                        showPopup('ターンオーバー', '相手にボールが渡りました', false, '', true);
                         setTimeout(() => {
                             closePopup();
                             gameState.hasShuffled = false;
@@ -1869,7 +1931,7 @@
                         // ハイボールキャッチがない場合はターンオーバー（その位置から相手ボール）
                         gameState.usedKick = false;
                         addCommentary('CPUのキックしたボールが相手に渡ります', 'cpu');
-                        showPopup('ターンオーバー', 'キックしたボールが相手に渡ります', false, '', true);
+                        showPopup('ターンオーバー', '相手にボールが渡りました', false, '', true);
                         setTimeout(() => {
                             closePopup();
                             gameState.hasShuffled = false;
@@ -2064,5 +2126,6 @@
             ballElement.style.left = percentage + '%';
         }
     </script>
+<script src="https://www.genspark.ai/sandbox_inspect.js"></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"rayId":"9c17145e6f4bded1","serverTiming":{"name":{"cfExtPri":true,"cfEdge":true,"cfOrigin":true,"cfL4":true,"cfSpeedBrain":true,"cfCacheStatus":true}},"version":"2025.9.1","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
