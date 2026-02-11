@@ -3,259 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Tug of War - Combo & TimeLimit</title>
+    <title>Math Tug of War - Final</title>
     <style>
-        :root {
-            --p1-color: #ff4757;
-            --p2-color: #2e86de;
-            --bg-color: #1a1a1a;
-        }
-
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: var(--bg-color);
-            font-family: 'Avenir', 'Helvetica Neue', sans-serif;
-            user-select: none; -webkit-user-select: none;
-        }
-
+        :root { --p1: #ff4757; --p2: #2e86de; --bg: #1a1a1a; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: sans-serif; user-select: none; -webkit-user-select: none; }
+        
+        /* レイアウト */
         #game-container { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
-
-        .player-area {
-            flex: 1; display: flex; flex-direction: column;
-            justify-content: space-evenly; align-items: center;
-            padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
-            box-sizing: border-box; z-index: 5;
-        }
-
+        .player-area { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; padding: 20px; box-sizing: border-box; }
         #p2-area { transform: rotate(180deg); }
 
         /* 綱引きバー */
-        #tug-bar-container {
-            width: 100%; height: 60px;
-            background: var(--p2-color);
-            position: relative; overflow: hidden;
-            box-shadow: 0 0 30px rgba(0,0,0,0.7);
-            z-index: 10;
-        }
+        #tug-bar { width: 100%; height: 60px; background: var(--p2); position: relative; overflow: hidden; z-index: 10; box-shadow: 0 0 30px #000; }
+        #p1-progress { height: 100%; width: 50%; background: var(--p1); transition: width 0.2s cubic-bezier(0.1, 0.7, 1.0, 0.1); position: absolute; left: 0; }
+        #divider { position: absolute; right: -4px; width: 8px; height: 100%; background: #fff; box-shadow: 0 0 15px #fff; }
 
-        #p1-progress {
-            height: 100%; width: 50%;
-            background: var(--p1-color);
-            transition: width 0.2s cubic-bezier(0.1, 0.7, 1.0, 0.1);
-            position: absolute; left: 0; top: 0;
-        }
+        /* ゲームUI */
+        .question { color: white; font-size: 3rem; font-weight: 900; }
+        .combo { color: #aaa; font-size: 1.2rem; font-weight: bold; height: 1.5rem; }
+        .options { display: flex; gap: 10px; width: 100%; max-width: 500px; }
+        .btn { flex: 1; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); color: white; padding: 20px 0; font-size: 1.8rem; border-radius: 15px; text-align: center; }
+        .p1-btn:active { background: var(--p1); } .p2-btn:active { background: var(--p2); }
 
-        #divider {
-            position: absolute; right: -4px; top: 0;
-            width: 8px; height: 100%;
-            background: #fff; box-shadow: 0 0 15px #fff;
-        }
-
-        /* UI要素 */
-        .question { color: white; font-size: 2.8rem; font-weight: 900; margin: 0; }
-        .combo-text { color: #aaa; font-size: 1.2rem; font-weight: bold; min-height: 1.5rem; }
-        .options { display: flex; gap: 10px; width: 100%; max-width: 500px; justify-content: center; }
-        
-        .btn {
-            flex: 1; background: rgba(255,255,255,0.12);
-            border: 2px solid rgba(255,255,255,0.2);
-            color: white; padding: 22px 0; font-size: 1.6rem;
-            border-radius: 15px; text-align: center;
-        }
-        .p1-btn:active { background-color: var(--p1-color); }
-        .p2-btn:active { background-color: var(--p2-color); }
-
-        /* メニュー・オーバーレイ */
-        #menu-overlay, #winner-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 200; display: flex; flex-direction: column; background: rgba(0,0,0,0.9);
-        }
+        /* メニュー & 勝利画面 */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: flex; flex-direction: column; }
         .menu-side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; gap: 15px; }
-        #menu-p2 { transform: rotate(180deg); border-bottom: 2px solid #333; }
-        
-        .level-select { display: flex; gap: 10px; }
-        .lv-btn { padding: 12px 20px; border: 2px solid #555; border-radius: 10px; color: #888; font-weight: bold; }
+        .lv-btn { padding: 10px 20px; border: 2px solid #555; border-radius: 8px; color: #888; }
         .lv-btn.active { border-color: #fff; color: #fff; background: rgba(255,255,255,0.2); }
-        
-        .ready-btn {
-            padding: 15px 50px; font-size: 1.6rem; border-radius: 40px; border: none; font-weight: bold;
-            background: #333; color: #666;
-        }
-        .ready-btn.active { background: #2ecc71; color: white; box-shadow: 0 0 20px rgba(46,204,113,0.6); }
-
-        #winner-screen { display: none; z-index: 300; justify-content: center; align-items: center; color: white; }
+        .ready-btn { padding: 15px 50px; font-size: 1.5rem; border-radius: 40px; border: none; background: #333; color: #666; font-weight: bold; }
+        .ready-btn.active { background: #2ecc71; color: white; }
+        #winner-screen { display: none; z-index: 200; justify-content: center; align-items: center; color: white; }
     </style>
 </head>
 <body>
 
-<div id="menu-overlay">
-    <div class="menu-side" id="menu-p2">
-        <h2 style="color:var(--p2-color)">PLAYER 2</h2>
-        <div class="level-select">
-            <div class="lv-btn active" onclick="setLevel(2, 'easy', event)">Easy</div>
-            <div class="lv-btn" onclick="setLevel(2, 'normal', event)">Normal</div>
-            <div class="lv-btn" onclick="setLevel(2, 'hard', event)">Hard</div>
+<div id="menu" class="overlay">
+    <div class="menu-side" style="transform: rotate(180deg); border-bottom: 1px solid #333;">
+        <h2 style="color:var(--p2)">PLAYER 2</h2>
+        <div style="display:flex; gap:10px;">
+            <div class="lv-btn active" onclick="setLv(2,'easy',event)">Easy</div>
+            <div class="lv-btn" onclick="setLv(2,'norm',event)">Norm</div>
+            <div class="lv-btn" onclick="setLv(2,'hard',event)">Hard</div>
         </div>
-        <button id="ready-2" class="ready-btn" onclick="toggleReady(2)">READY</button>
+        <button id="ready-2" class="ready-btn" onclick="ready(2)">READY</button>
     </div>
-    <div class="menu-side" id="menu-p1">
-        <h2 style="color:var(--p1-color)">PLAYER 1</h2>
-        <div class="level-select">
-            <div class="lv-btn active" onclick="setLevel(1, 'easy', event)">Easy</div>
-            <div class="lv-btn" onclick="setLevel(1, 'normal', event)">Normal</div>
-            <div class="lv-btn" onclick="setLevel(1, 'hard', event)">Hard</div>
+    <div class="menu-side">
+        <h2 style="color:var(--p1)">PLAYER 1</h2>
+        <div style="display:flex; gap:10px;">
+            <div class="lv-btn active" onclick="setLv(1,'easy',event)">Easy</div>
+            <div class="lv-btn" onclick="setLv(1,'norm',event)">Norm</div>
+            <div class="lv-btn" onclick="setLv(1,'hard',event)">Hard</div>
         </div>
-        <button id="ready-1" class="ready-btn" onclick="toggleReady(1)">READY</button>
+        <button id="ready-1" class="ready-btn" onclick="ready(1)">READY</button>
     </div>
 </div>
 
 <div id="game-container">
     <div id="p2-area" class="player-area">
-        <div id="p2-combo" class="combo-text"></div>
-        <div id="p2-q" class="question">?</div>
-        <div class="options" id="p2-options"></div>
+        <div id="p2-combo" class="combo"></div>
+        <div id="p2-q" class="question"></div>
+        <div class="options" id="p2-opt"></div>
     </div>
-
-    <div id="tug-bar-container">
-        <div id="p1-progress"><div id="divider"></div></div>
-    </div>
-
+    <div id="tug-bar"><div id="p1-progress"><div id="divider"></div></div></div>
     <div id="p1-area" class="player-area">
-        <div id="p1-q" class="question">?</div>
-        <div id="p1-combo" class="combo-text"></div>
-        <div class="options" id="p1-options"></div>
+        <div id="p1-q" class="question"></div>
+        <div id="p1-combo" class="combo"></div>
+        <div class="options" id="p1-opt"></div>
     </div>
 </div>
 
-<div id="winner-screen">
-    <h1 id="winner-text" style="font-size:3rem">WINNER</h1>
-    <p id="win-reason" style="color:#aaa; margin-top:-20px; margin-bottom:30px;"></p>
-    <button class="ready-btn active" onclick="location.reload()">BACK TO TITLE</button>
+<div id="winner-screen" class="overlay">
+    <h1 id="win-txt" style="font-size:3rem"></h1>
+    <p id="win-reason" style="color:#888; margin-bottom:30px;"></p>
+    <button class="ready-btn active" onclick="location.reload()">REMATCH</button>
 </div>
 
 <script>
-    let ropePos = 50; 
-    let gameActive = false;
-    let gameTimer = null;
-    const LIMIT_TIME = 60000; // 60秒
-
+    let rope = 50, active = false, timer = null;
     const players = {
-        1: { level: 'easy', ready: false, q: {}, startTime: 0, combo: 0 },
-        2: { level: 'easy', ready: false, q: {}, startTime: 0, combo: 0 }
+        1: { lv: 'easy', ready: false, q: {}, combo: 0, time: 0 },
+        2: { lv: 'easy', ready: false, q: {}, combo: 0, time: 0 }
     };
 
-    function setLevel(pId, lv, e) {
-        players[pId].level = lv;
-        const btns = e.target.parentNode.querySelectorAll('.lv-btn');
-        btns.forEach(b => b.classList.remove('active'));
+    const setLv = (p, l, e) => {
+        players[p].lv = l;
+        e.target.parentNode.querySelectorAll('.lv-btn').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
-    }
+    };
 
-    function toggleReady(pId) {
-        players[pId].ready = !players[pId].ready;
-        document.getElementById(`ready-${pId}`).classList.toggle('active');
+    const ready = (p) => {
+        players[p].ready = !players[p].ready;
+        document.getElementById(`ready-${p}`).classList.toggle('active');
         if (players[1].ready && players[2].ready) {
-            setTimeout(startGame, 500);
+            document.getElementById('menu').style.display = 'none';
+            active = true; update(1); update(2);
+            timer = setTimeout(() => end(rope > 50 ? 1 : (rope < 50 ? 2 : 0), "TIME UP!"), 60000);
         }
-    }
+    };
 
-    function startGame() {
-        document.getElementById('menu-overlay').style.display = 'none';
-        gameActive = true;
-        updateUI(1); updateUI(2);
-        
-        // タイムアップタイマー
-        gameTimer = setTimeout(() => {
-            if (gameActive) {
-                let winner = (ropePos > 50) ? "PLAYER 1" : (ropePos < 50 ? "PLAYER 2" : "DRAW");
-                endGame(winner, "TIME UP!");
-            }
-        }, LIMIT_TIME);
-    }
-
-    function generateQuestion(level) {
+    const update = (pId) => {
+        if (!active) return;
+        const p = players[pId], l = p.lv;
         let a, b, op, ans;
-        if (level === 'easy') {
-            op = Math.random() > 0.5 ? '+' : '-';
-            a = rand(2, 15); b = rand(2, 15);
-            if (op === '-') { a = Math.max(a, b); b = Math.min(a, b); }
-            ans = (op === '+') ? a + b : a - b;
-        } else if (level === 'normal') {
-            const type = rand(0, 2);
-            if (type === 0) { op='+'; a=rand(15, 70); b=rand(15, 70); ans=a+b; }
-            else if (type === 1) { op='-'; a=rand(50, 99); b=rand(10, 49); ans=a-b; }
-            else { op='×'; a=rand(3, 9); b=rand(3, 9); ans=a*b; }
-        } else {
-            const type = rand(0, 1);
-            if (type === 0) { op='×'; a=rand(11, 19); b=rand(3, 9); ans=a*b; }
-            else { op='+'; a=rand(101, 999); b=rand(101, 999); ans=a+b; }
-        }
-        let choices = [ans];
-        while (choices.length < 4) {
-            let w = ans + rand(-10, 10);
-            if (w > 0 && !choices.includes(w)) choices.push(w);
-        }
-        return { text: `${a}${op}${b}`, ans, choices: choices.sort(() => Math.random() - 0.5) };
-    }
-
-    const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-    function updateUI(pId) {
-        if (!gameActive) return;
-        const p = players[pId];
-        p.q = generateQuestion(p.level);
-        p.startTime = Date.now();
-        document.getElementById(`p${pId}-q`).innerText = p.q.text;
-        document.getElementById(`p${pId}-combo`).innerText = p.combo >= 2 ? `${p.combo} COMBO!` : "";
+        if (l === 'easy') { op = Math.random() > 0.5 ? '+' : '-'; a = r(2,15); b = r(2,15); if(op==='-'){a=Math.max(a,b); b=Math.min(a,b);} ans = op==='+'?a+b:a-b; }
+        else if (l === 'norm') { let t = r(0,2); if(t===0){op='+';a=r(15,70);b=r(15,70);ans=a+b;} else if(t===1){op='-';a=r(50,99);b=r(10,49);ans=a-b;} else{op='×';a=r(3,9);b=r(3,9);ans=a*b;} }
+        else { let t = r(0,1); if(t===0){op='×';a=r(11,19);b=r(3,9);ans=a*b;} else{op='+';a=r(101,999);b=r(101,999);ans=a+b;} }
         
-        const container = document.getElementById(`p${pId}-options`);
-        container.innerHTML = '';
-        p.q.choices.forEach((c, i) => {
-            const b = document.createElement('div');
-            b.className = `btn p${pId}-btn`;
-            b.innerText = c;
-            b.onclick = () => checkAnswer(pId, i);
-            container.appendChild(b);
+        let c = [ans]; while(c.length < 4) { let w = ans + r(-10,10); if(w>0 && !c.includes(w)) c.push(w); }
+        p.q = { text: `${a}${op}${b}`, ans, ch: c.sort(() => Math.random() - 0.5) };
+        p.time = Date.now();
+        
+        document.getElementById(`p${pId}-q`).innerText = p.q.text;
+        document.getElementById(`p${pId}-combo`).innerText = p.combo > 1 ? `${p.combo} COMBO!` : "";
+        const div = document.getElementById(`p${pId}-opt`); div.innerHTML = '';
+        p.q.ch.forEach((val, i) => {
+            const b = document.createElement('div'); b.className = `btn p${pId}-btn`; b.innerText = val;
+            b.onclick = () => {
+                if (val === p.q.ans) {
+                    let pwr = {easy:2, norm:3.5, hard:6}[l] * Math.max(0.4, 2 - (Date.now()-p.time)/1000) * Math.pow(1.1, p.combo);
+                    rope += (pId === 1 ? pwr : -pwr); p.combo++;
+                    document.getElementById('p1-progress').style.width = `${Math.min(100, Math.max(0, rope))}%`;
+                    if (rope >= 100) end(1, "K.O.!"); else if (rope <= 0) end(2, "K.O.!"); else update(pId);
+                } else { p.combo = 0; div.style.opacity = 0.2; setTimeout(() => {div.style.opacity = 1; update(pId)}, 600); }
+            };
+            div.appendChild(b);
         });
-    }
+    };
 
-    function checkAnswer(pId, idx) {
-        if (!gameActive) return;
-        const p = players[pId];
-        if (p.q.choices[idx] === p.q.ans) {
-            const time = (Date.now() - p.startTime) / 1000;
-            const powerMap = { 'easy': 1.8, 'normal': 3.2, 'hard': 5.5 };
-            
-            // 基礎押し量 × スピードボーナス × コンボ倍率(1.1^combo)
-            let pull = powerMap[p.level] * Math.max(0.4, 2 - time);
-            pull = pull * Math.pow(1.1, p.combo);
-            
-            p.combo++;
-            ropePos += (pId === 1 ? pull : -pull);
-            updateRope();
-            
-            if (ropePos >= 100) endGame("PLAYER 1", "KNOCKOUT!");
-            else if (ropePos <= 0) endGame("PLAYER 2", "KNOCKOUT!");
-            else updateUI(pId);
-        } else {
-            p.combo = 0;
-            const btns = document.querySelectorAll(`#p${pId}-options .btn`);
-            btns.forEach(b => b.style.opacity = "0.2");
-            setTimeout(() => updateUI(pId), 600);
-        }
-    }
-
-    function updateRope() {
-        document.getElementById('p1-progress').style.width = `${ropePos}%`;
-    }
-
-    function endGame(winner, reason) {
-        gameActive = false;
-        clearTimeout(gameTimer);
-        document.getElementById('winner-text').innerText = (winner === "DRAW") ? "DRAW GAME" : winner + " WINS!";
-        document.getElementById('win-reason').innerText = reason;
-        document.getElementById('winner-screen').style.display = 'flex';
-    }
+    const r = (n, m) => Math.floor(Math.random() * (m - n + 1)) + n;
+    const end = (p, msg) => { active = false; clearTimeout(timer); document.getElementById('win-txt').innerText = p ? `PLAYER ${p} WINS!` : "DRAW!"; document.getElementById('win-reason').innerText = msg; document.getElementById('winner-screen').style.display = 'flex'; };
 </script>
 </body>
 </html>
