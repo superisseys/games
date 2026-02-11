@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Tug of War - Red vs Blue</title>
+    <title>Math Tug of War - Combo & TimeLimit</title>
     <style>
         :root {
-            --p1-color: #ff4757; /* 赤 */
-            --p2-color: #2e86de; /* 青 */
+            --p1-color: #ff4757;
+            --p2-color: #2e86de;
             --bg-color: #1a1a1a;
         }
 
@@ -20,21 +20,19 @@
 
         #game-container { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
 
-        /* プレイヤーエリア */
         .player-area {
             flex: 1; display: flex; flex-direction: column;
             justify-content: space-evenly; align-items: center;
             padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
-            box-sizing: border-box;
-            z-index: 5;
+            box-sizing: border-box; z-index: 5;
         }
 
         #p2-area { transform: rotate(180deg); }
 
-        /* 綱引きゲージ（メインの視覚演出） */
+        /* 綱引きバー */
         #tug-bar-container {
-            width: 100%; height: 60px; /* 太くして見やすく */
-            background: var(--p2-color); /* デフォルトはP2の色 */
+            width: 100%; height: 60px;
+            background: var(--p2-color);
             position: relative; overflow: hidden;
             box-shadow: 0 0 30px rgba(0,0,0,0.7);
             z-index: 10;
@@ -47,16 +45,15 @@
             position: absolute; left: 0; top: 0;
         }
 
-        /* 中央の白い仕切りバー */
         #divider {
             position: absolute; right: -4px; top: 0;
             width: 8px; height: 100%;
-            background: #fff;
-            box-shadow: 0 0 15px #fff;
+            background: #fff; box-shadow: 0 0 15px #fff;
         }
 
-        /* 問題とボタン */
-        .question { color: white; font-size: 2.8rem; font-weight: 900; }
+        /* UI要素 */
+        .question { color: white; font-size: 2.8rem; font-weight: 900; margin: 0; }
+        .combo-text { color: #aaa; font-size: 1.2rem; font-weight: bold; min-height: 1.5rem; }
         .options { display: flex; gap: 10px; width: 100%; max-width: 500px; justify-content: center; }
         
         .btn {
@@ -68,8 +65,8 @@
         .p1-btn:active { background-color: var(--p1-color); }
         .p2-btn:active { background-color: var(--p2-color); }
 
-        /* タイトル・メニュー画面 */
-        #menu-overlay {
+        /* メニュー・オーバーレイ */
+        #menu-overlay, #winner-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 200; display: flex; flex-direction: column; background: rgba(0,0,0,0.9);
         }
@@ -86,11 +83,7 @@
         }
         .ready-btn.active { background: #2ecc71; color: white; box-shadow: 0 0 20px rgba(46,204,113,0.6); }
 
-        /* 勝利画面 */
-        #winner-screen {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 300; flex-direction: column; justify-content: center; align-items: center; color: white;
-        }
+        #winner-screen { display: none; z-index: 300; justify-content: center; align-items: center; color: white; }
     </style>
 </head>
 <body>
@@ -118,32 +111,37 @@
 
 <div id="game-container">
     <div id="p2-area" class="player-area">
+        <div id="p2-combo" class="combo-text"></div>
         <div id="p2-q" class="question">?</div>
         <div class="options" id="p2-options"></div>
     </div>
 
     <div id="tug-bar-container">
-        <div id="p1-progress">
-            <div id="divider"></div>
-        </div>
+        <div id="p1-progress"><div id="divider"></div></div>
     </div>
 
     <div id="p1-area" class="player-area">
         <div id="p1-q" class="question">?</div>
+        <div id="p1-combo" class="combo-text"></div>
         <div class="options" id="p1-options"></div>
     </div>
 </div>
 
 <div id="winner-screen">
     <h1 id="winner-text" style="font-size:3rem">WINNER</h1>
-    <button class="ready-btn active" onclick="location.reload()">REMATCH</button>
+    <p id="win-reason" style="color:#aaa; margin-top:-20px; margin-bottom:30px;"></p>
+    <button class="ready-btn active" onclick="location.reload()">BACK TO TITLE</button>
 </div>
 
 <script>
     let ropePos = 50; 
+    let gameActive = false;
+    let gameTimer = null;
+    const LIMIT_TIME = 60000; // 60秒
+
     const players = {
-        1: { level: 'easy', ready: false, q: {}, startTime: 0 },
-        2: { level: 'easy', ready: false, q: {}, startTime: 0 }
+        1: { level: 'easy', ready: false, q: {}, startTime: 0, combo: 0 },
+        2: { level: 'easy', ready: false, q: {}, startTime: 0, combo: 0 }
     };
 
     function setLevel(pId, lv, e) {
@@ -163,29 +161,38 @@
 
     function startGame() {
         document.getElementById('menu-overlay').style.display = 'none';
+        gameActive = true;
         updateUI(1); updateUI(2);
+        
+        // タイムアップタイマー
+        gameTimer = setTimeout(() => {
+            if (gameActive) {
+                let winner = (ropePos > 50) ? "PLAYER 1" : (ropePos < 50 ? "PLAYER 2" : "DRAW");
+                endGame(winner, "TIME UP!");
+            }
+        }, LIMIT_TIME);
     }
 
     function generateQuestion(level) {
         let a, b, op, ans;
         if (level === 'easy') {
             op = Math.random() > 0.5 ? '+' : '-';
-            a = rand(2, 12); b = rand(2, 12);
+            a = rand(2, 15); b = rand(2, 15);
             if (op === '-') { a = Math.max(a, b); b = Math.min(a, b); }
             ans = (op === '+') ? a + b : a - b;
         } else if (level === 'normal') {
             const type = rand(0, 2);
-            if (type === 0) { op='+'; a=rand(15, 60); b=rand(15, 60); ans=a+b; }
-            else if (type === 1) { op='-'; a=rand(50, 99); b=rand(10, 45); ans=a-b; }
+            if (type === 0) { op='+'; a=rand(15, 70); b=rand(15, 70); ans=a+b; }
+            else if (type === 1) { op='-'; a=rand(50, 99); b=rand(10, 49); ans=a-b; }
             else { op='×'; a=rand(3, 9); b=rand(3, 9); ans=a*b; }
         } else {
             const type = rand(0, 1);
-            if (type === 0) { op='×'; a=rand(12, 19); b=rand(3, 9); ans=a*b; }
-            else { op='+'; a=rand(120, 880); b=rand(120, 880); ans=a+b; }
+            if (type === 0) { op='×'; a=rand(11, 19); b=rand(3, 9); ans=a*b; }
+            else { op='+'; a=rand(101, 999); b=rand(101, 999); ans=a+b; }
         }
         let choices = [ans];
         while (choices.length < 4) {
-            let w = ans + rand(-8, 8);
+            let w = ans + rand(-10, 10);
             if (w > 0 && !choices.includes(w)) choices.push(w);
         }
         return { text: `${a}${op}${b}`, ans, choices: choices.sort(() => Math.random() - 0.5) };
@@ -194,10 +201,13 @@
     const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
     function updateUI(pId) {
+        if (!gameActive) return;
         const p = players[pId];
         p.q = generateQuestion(p.level);
         p.startTime = Date.now();
         document.getElementById(`p${pId}-q`).innerText = p.q.text;
+        document.getElementById(`p${pId}-combo`).innerText = p.combo >= 2 ? `${p.combo} COMBO!` : "";
+        
         const container = document.getElementById(`p${pId}-options`);
         container.innerHTML = '';
         p.q.choices.forEach((c, i) => {
@@ -210,18 +220,25 @@
     }
 
     function checkAnswer(pId, idx) {
+        if (!gameActive) return;
         const p = players[pId];
         if (p.q.choices[idx] === p.q.ans) {
             const time = (Date.now() - p.startTime) / 1000;
-            const powerMap = { 'easy': 2, 'normal': 3.5, 'hard': 6 };
-            const pull = powerMap[p.level] * Math.max(0.4, 2 - time);
+            const powerMap = { 'easy': 1.8, 'normal': 3.2, 'hard': 5.5 };
             
+            // 基礎押し量 × スピードボーナス × コンボ倍率(1.1^combo)
+            let pull = powerMap[p.level] * Math.max(0.4, 2 - time);
+            pull = pull * Math.pow(1.1, p.combo);
+            
+            p.combo++;
             ropePos += (pId === 1 ? pull : -pull);
             updateRope();
-            if (ropePos >= 100) endGame("PLAYER 1");
-            else if (ropePos <= 0) endGame("PLAYER 2");
+            
+            if (ropePos >= 100) endGame("PLAYER 1", "KNOCKOUT!");
+            else if (ropePos <= 0) endGame("PLAYER 2", "KNOCKOUT!");
             else updateUI(pId);
         } else {
+            p.combo = 0;
             const btns = document.querySelectorAll(`#p${pId}-options .btn`);
             btns.forEach(b => b.style.opacity = "0.2");
             setTimeout(() => updateUI(pId), 600);
@@ -229,12 +246,14 @@
     }
 
     function updateRope() {
-        const p1Bar = document.getElementById('p1-progress');
-        p1Bar.style.width = `${ropePos}%`;
+        document.getElementById('p1-progress').style.width = `${ropePos}%`;
     }
 
-    function endGame(winner) {
-        document.getElementById('winner-text').innerText = winner + " WINS!";
+    function endGame(winner, reason) {
+        gameActive = false;
+        clearTimeout(gameTimer);
+        document.getElementById('winner-text').innerText = (winner === "DRAW") ? "DRAW GAME" : winner + " WINS!";
+        document.getElementById('win-reason').innerText = reason;
         document.getElementById('winner-screen').style.display = 'flex';
     }
 </script>
