@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Tug of War - Professional</title>
+    <title>Math Tug of War - Red vs Blue</title>
     <style>
         :root {
-            --p1-color: #ff4757;
-            --p2-color: #2e86de;
-            --bg-color: #1e272e;
+            --p1-color: #ff4757; /* 赤 */
+            --p2-color: #2e86de; /* 青 */
+            --bg-color: #1a1a1a;
         }
 
         body, html {
@@ -18,51 +18,75 @@
             user-select: none; -webkit-user-select: none;
         }
 
-        /* 画面レイアウト */
-        #game-container { display: flex; flex-direction: column; width: 100vw; height: 100vh; filter: blur(0px); transition: filter 0.3s; }
-        .player-area { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; padding: 10px; box-sizing: border-box; }
+        #game-container { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+
+        /* プレイヤーエリア */
+        .player-area {
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: space-evenly; align-items: center;
+            padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+
         #p2-area { transform: rotate(180deg); }
 
-        /* タイトル・メニュー画面 */
-        #menu-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 200; display: flex; flex-direction: column; background: rgba(0,0,0,0.85);
+        /* 綱引きゲージ（メインの視覚演出） */
+        #tug-bar-container {
+            width: 100%; height: 60px; /* 太くして見やすく */
+            background: var(--p2-color); /* デフォルトはP2の色 */
+            position: relative; overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            z-index: 10;
         }
 
-        .menu-player-side {
-            flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            color: white; gap: 15px;
+        #p1-progress {
+            height: 100%; width: 50%;
+            background: var(--p1-color);
+            transition: width 0.2s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+            position: absolute; left: 0; top: 0;
         }
-        #menu-p2 { transform: rotate(180deg); border-bottom: 1px dashed #555; }
 
-        /* ボタンデザイン */
-        .level-select { display: flex; gap: 10px; }
-        .lv-btn {
-            padding: 10px 15px; border: 2px solid #555; border-radius: 8px; color: #aaa; font-weight: bold;
+        /* 中央の白い仕切りバー */
+        #divider {
+            position: absolute; right: -4px; top: 0;
+            width: 8px; height: 100%;
+            background: #fff;
+            box-shadow: 0 0 15px #fff;
         }
-        .lv-btn.active { border-color: #fff; color: #fff; background: rgba(255,255,255,0.2); }
+
+        /* 問題とボタン */
+        .question { color: white; font-size: 2.8rem; font-weight: 900; }
+        .options { display: flex; gap: 10px; width: 100%; max-width: 500px; justify-content: center; }
         
-        .ready-btn {
-            padding: 15px 40px; font-size: 1.5rem; border-radius: 40px; border: none; font-weight: bold;
-            background: #444; color: #888; transition: 0.3s;
-        }
-        .ready-btn.active { background: #2ecc71; color: white; box-shadow: 0 0 20px #2ecc71; }
-
-        /* ゲーム中パーツ */
-        #tug-bar-container { width: 100%; height: 24px; background: #333; position: relative; z-index: 10; overflow: hidden; }
-        #rope-gradient {
-            height: 100%; width: 50%; background: linear-gradient(90deg, var(--p1-color), #fff, var(--p2-color));
-            transition: width 0.2s cubic-bezier(0.1, 0.7, 1.0, 0.1); border-right: 4px solid #fff;
-        }
-        .question { color: white; font-size: 2.5rem; font-weight: 800; }
-        .options { display: flex; gap: 8px; width: 95%; justify-content: center; }
         .btn {
-            flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
-            color: white; padding: 18px 0; font-size: 1.4rem; border-radius: 12px; text-align: center; max-width: 85px;
+            flex: 1; background: rgba(255,255,255,0.12);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: white; padding: 22px 0; font-size: 1.6rem;
+            border-radius: 15px; text-align: center;
         }
         .p1-btn:active { background-color: var(--p1-color); }
         .p2-btn:active { background-color: var(--p2-color); }
 
+        /* タイトル・メニュー画面 */
+        #menu-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 200; display: flex; flex-direction: column; background: rgba(0,0,0,0.9);
+        }
+        .menu-side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; gap: 15px; }
+        #menu-p2 { transform: rotate(180deg); border-bottom: 2px solid #333; }
+        
+        .level-select { display: flex; gap: 10px; }
+        .lv-btn { padding: 12px 20px; border: 2px solid #555; border-radius: 10px; color: #888; font-weight: bold; }
+        .lv-btn.active { border-color: #fff; color: #fff; background: rgba(255,255,255,0.2); }
+        
+        .ready-btn {
+            padding: 15px 50px; font-size: 1.6rem; border-radius: 40px; border: none; font-weight: bold;
+            background: #333; color: #666;
+        }
+        .ready-btn.active { background: #2ecc71; color: white; box-shadow: 0 0 20px rgba(46,204,113,0.6); }
+
+        /* 勝利画面 */
         #winner-screen {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 300; flex-direction: column; justify-content: center; align-items: center; color: white;
@@ -72,21 +96,21 @@
 <body>
 
 <div id="menu-overlay">
-    <div class="menu-player-side" id="menu-p2">
-        <h2>PLAYER 2</h2>
+    <div class="menu-side" id="menu-p2">
+        <h2 style="color:var(--p2-color)">PLAYER 2</h2>
         <div class="level-select">
-            <div class="lv-btn active" onclick="setLevel(2, 'easy')">Easy</div>
-            <div class="lv-btn" onclick="setLevel(2, 'normal')">Normal</div>
-            <div class="lv-btn" onclick="setLevel(2, 'hard')">Hard</div>
+            <div class="lv-btn active" onclick="setLevel(2, 'easy', event)">Easy</div>
+            <div class="lv-btn" onclick="setLevel(2, 'normal', event)">Normal</div>
+            <div class="lv-btn" onclick="setLevel(2, 'hard', event)">Hard</div>
         </div>
         <button id="ready-2" class="ready-btn" onclick="toggleReady(2)">READY</button>
     </div>
-    <div class="menu-player-side" id="menu-p1">
-        <h2>PLAYER 1</h2>
+    <div class="menu-side" id="menu-p1">
+        <h2 style="color:var(--p1-color)">PLAYER 1</h2>
         <div class="level-select">
-            <div class="lv-btn active" onclick="setLevel(1, 'easy')">Easy</div>
-            <div class="lv-btn" onclick="setLevel(1, 'normal')">Normal</div>
-            <div class="lv-btn" onclick="setLevel(1, 'hard')">Hard</div>
+            <div class="lv-btn active" onclick="setLevel(1, 'easy', event)">Easy</div>
+            <div class="lv-btn" onclick="setLevel(1, 'normal', event)">Normal</div>
+            <div class="lv-btn" onclick="setLevel(1, 'hard', event)">Hard</div>
         </div>
         <button id="ready-1" class="ready-btn" onclick="toggleReady(1)">READY</button>
     </div>
@@ -97,7 +121,13 @@
         <div id="p2-q" class="question">?</div>
         <div class="options" id="p2-options"></div>
     </div>
-    <div id="tug-bar-container"><div id="rope-gradient"></div></div>
+
+    <div id="tug-bar-container">
+        <div id="p1-progress">
+            <div id="divider"></div>
+        </div>
+    </div>
+
     <div id="p1-area" class="player-area">
         <div id="p1-q" class="question">?</div>
         <div class="options" id="p1-options"></div>
@@ -105,28 +135,30 @@
 </div>
 
 <div id="winner-screen">
-    <h1 id="winner-text">WINNER!</h1>
-    <button class="ready-btn active" onclick="location.reload()">BACK TO TITLE</button>
+    <h1 id="winner-text" style="font-size:3rem">WINNER</h1>
+    <button class="ready-btn active" onclick="location.reload()">REMATCH</button>
 </div>
 
 <script>
-    let ropePos = 50;
+    let ropePos = 50; 
     const players = {
-        1: { level: 'easy', ready: false, q: {}, combo: 0, startTime: 0 },
-        2: { level: 'easy', ready: false, q: {}, combo: 0, startTime: 0 }
+        1: { level: 'easy', ready: false, q: {}, startTime: 0 },
+        2: { level: 'easy', ready: false, q: {}, startTime: 0 }
     };
 
-    function setLevel(pId, lv) {
+    function setLevel(pId, lv, e) {
         players[pId].level = lv;
-        const btns = document.querySelectorAll(`#menu-p${pId} .lv-btn`);
+        const btns = e.target.parentNode.querySelectorAll('.lv-btn');
         btns.forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
+        e.target.classList.add('active');
     }
 
     function toggleReady(pId) {
         players[pId].ready = !players[pId].ready;
         document.getElementById(`ready-${pId}`).classList.toggle('active');
-        if (players[1].ready && players[2].ready) startGame();
+        if (players[1].ready && players[2].ready) {
+            setTimeout(startGame, 500);
+        }
     }
 
     function startGame() {
@@ -138,23 +170,22 @@
         let a, b, op, ans;
         if (level === 'easy') {
             op = Math.random() > 0.5 ? '+' : '-';
-            a = Math.floor(Math.random() * 9) + 1;
-            b = Math.floor(Math.random() * 9) + 1;
-            ans = (op === '+') ? a + b : Math.max(a, b) - Math.min(a, b);
-            if (op === '-') { a = Math.max(a,b); b = Math.min(a,b); }
+            a = rand(2, 12); b = rand(2, 12);
+            if (op === '-') { a = Math.max(a, b); b = Math.min(a, b); }
+            ans = (op === '+') ? a + b : a - b;
         } else if (level === 'normal') {
-            const type = Math.floor(Math.random() * 3);
-            if (type === 0) { op='+'; a=rand(10,50); b=rand(10,50); ans=a+b; }
-            else if (type === 1) { op='-'; a=rand(50,99); b=rand(10,49); ans=a-b; }
-            else { op='×'; a=rand(2,9); b=rand(2,9); ans=a*b; }
+            const type = rand(0, 2);
+            if (type === 0) { op='+'; a=rand(15, 60); b=rand(15, 60); ans=a+b; }
+            else if (type === 1) { op='-'; a=rand(50, 99); b=rand(10, 45); ans=a-b; }
+            else { op='×'; a=rand(3, 9); b=rand(3, 9); ans=a*b; }
         } else {
-            const type = Math.floor(Math.random() * 2);
-            if (type === 0) { op='×'; a=rand(11,19); b=rand(2,9); ans=a*b; }
-            else { op='+'; a=rand(100,999); b=rand(100,999); ans=a+b; }
+            const type = rand(0, 1);
+            if (type === 0) { op='×'; a=rand(12, 19); b=rand(3, 9); ans=a*b; }
+            else { op='+'; a=rand(120, 880); b=rand(120, 880); ans=a+b; }
         }
         let choices = [ans];
         while (choices.length < 4) {
-            let w = ans + rand(-5, 5);
+            let w = ans + rand(-8, 8);
             if (w > 0 && !choices.includes(w)) choices.push(w);
         }
         return { text: `${a}${op}${b}`, ans, choices: choices.sort(() => Math.random() - 0.5) };
@@ -182,23 +213,28 @@
         const p = players[pId];
         if (p.q.choices[idx] === p.q.ans) {
             const time = (Date.now() - p.startTime) / 1000;
-            const powerMap = { 'easy': 1, 'normal': 1.5, 'hard': 2.5 };
-            const pull = powerMap[p.level] * Math.max(0.5, 2 - time);
+            const powerMap = { 'easy': 2, 'normal': 3.5, 'hard': 6 };
+            const pull = powerMap[p.level] * Math.max(0.4, 2 - time);
+            
             ropePos += (pId === 1 ? pull : -pull);
             updateRope();
-            if (ropePos >= 100 || ropePos <= 0) showWinner(pId);
-            updateUI(pId);
+            if (ropePos >= 100) endGame("PLAYER 1");
+            else if (ropePos <= 0) endGame("PLAYER 2");
+            else updateUI(pId);
         } else {
             const btns = document.querySelectorAll(`#p${pId}-options .btn`);
             btns.forEach(b => b.style.opacity = "0.2");
-            setTimeout(() => updateUI(pId), 500);
+            setTimeout(() => updateUI(pId), 600);
         }
     }
 
-    function updateRope() { document.getElementById('rope-gradient').style.width = `${ropePos}%`; }
+    function updateRope() {
+        const p1Bar = document.getElementById('p1-progress');
+        p1Bar.style.width = `${ropePos}%`;
+    }
 
-    function showWinner(pId) {
-        document.getElementById('winner-text').innerText = `PLAYER ${pId} WINS!`;
+    function endGame(winner) {
+        document.getElementById('winner-text').innerText = winner + " WINS!";
         document.getElementById('winner-screen').style.display = 'flex';
     }
 </script>
