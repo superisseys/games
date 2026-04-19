@@ -7,14 +7,17 @@
     <style>
         :root {
             --red: #ff3b30; --blue: #007aff; --yellow: #ffcc00; --green: #34c759;
-            --gray: #8e8e93; --light-gray: #e5e5ea;
+            --gray: #8e8e93; --black: #1c1c1e;
         }
         body {
             font-family: -apple-system, sans-serif;
             background-color: #f8f8f8; margin: 0; padding: 10px;
             overflow-x: hidden;
+            /* iPhoneでのズームをCSSレベルでも抑制 */
+            touch-action: manipulation;
         }
-        /* ストップウォッチ */
+        
+        /* タイマー・チーム選択セクション */
         .timer-section {
             background: white; border-radius: 12px; padding: 10px;
             text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px;
@@ -27,14 +30,14 @@
         .btn-stop { background-color: var(--red); }
         .btn-clear { background-color: var(--gray); }
 
-        /* チーム選択 */
-        .team-selection {
-            display: flex; justify-content: center; gap: 15px; margin-bottom: 10px;
+        /* チーム選択と決定ボタン */
+        .team-selection-container {
+            display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px;
         }
         .team-circle {
-            width: 45px; height: 45px; border-radius: 50%; border: 3px solid transparent;
+            width: 42px; height: 42px; border-radius: 50%; border: 3px solid transparent;
             font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center;
-            transition: 0.2s; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: 0.2s; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .t-red { background-color: #ff3b3044; color: #ff3b30; border-color: #ff3b3044; }
         .t-red.active { background-color: var(--red); color: white; border-color: white; }
@@ -45,15 +48,19 @@
         .t-green { background-color: #34c75944; color: #34c759; border-color: #34c75944; }
         .t-green.active { background-color: var(--green); color: white; border-color: white; }
 
-        /* 対戦表 7列対応 */
+        /* 決定ボタン */
+        .btn-confirm-teams {
+            background-color: var(--black); color: white; border: none;
+            padding: 8px 12px; border-radius: 8px; font-weight: bold; font-size: 12px;
+        }
+        .btn-confirm-teams.locked { background-color: #ccc; pointer-events: none; }
+
+        /* 対戦表 */
         table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
         th { font-size: 10px; color: #666; padding-bottom: 5px; }
-        td { padding: 4px 1px; text-align: center; border-bottom: 1px solid #eee; transition: 0.3s; }
+        td { padding: 4px 1px; text-align: center; border-bottom: 1px solid #eee; }
         
-        /* 確定後の行スタイル */
         tr.locked td { background-color: #efefef; color: #aaa; }
-        tr.locked .team-label { opacity: 0.8; } /* チームカラーは維持しつつ少し透過 */
-
         .btn-try {
             background: var(--gray); color: white; border: none; width: 100%; height: 32px;
             border-radius: 6px; font-size: 10px; font-weight: bold;
@@ -61,14 +68,11 @@
         .score-val { font-size: 18px; font-weight: bold; }
         .team-label { display: block; padding: 4px 0; border-radius: 4px; color: white; font-weight: bold; }
         
-        /* 済ボタン（丸ボタン） */
         .btn-done {
             width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--gray);
             background: white; color: var(--gray); font-size: 10px; font-weight: bold;
         }
-        tr.locked .btn-done {
-            background: var(--gray); color: white; border: none;
-        }
+        tr.locked .btn-done { background: var(--gray); color: white; border: none; }
     </style>
 </head>
 <body>
@@ -82,11 +86,12 @@
         </div>
     </div>
 
-    <div class="team-selection">
+    <div class="team-selection-container">
         <div id="btn-red" class="team-circle t-red" onclick="toggleTeam('赤', '#ff3b30', 'red')">赤</div>
         <div id="btn-blue" class="team-circle t-blue" onclick="toggleTeam('青', '#007aff', 'blue')">青</div>
         <div id="btn-yellow" class="team-circle t-yellow" onclick="toggleTeam('黄', '#ffcc00', 'yellow')">黄</div>
         <div id="btn-green" class="team-circle t-green" onclick="toggleTeam('緑', '#34c759', 'green')">緑</div>
+        <button id="confirm-teams" class="btn-confirm-teams" onclick="confirmTeams()">決定</button>
     </div>
 
     <div id="match-container">
@@ -106,11 +111,15 @@
     <script>
         let startTime, elapsedTime = 0, timerInterval;
         let activeTeams = [];
+        let teamsLocked = false;
+
+        // ズーム禁止をJavaScriptで強化（ピンチイン・アウト）
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
 
         window.addEventListener('beforeunload', (e) => {
-            if (elapsedTime > 0 || activeTeams.length > 0) {
-                e.preventDefault(); e.returnValue = ""; 
-            }
+            if (elapsedTime > 0 || activeTeams.length > 0) { e.preventDefault(); e.returnValue = ""; }
         });
 
         function updateTime() {
@@ -125,6 +134,7 @@
         function resetTimer() { if (confirm("本当にクリアしますか？")) { stopTimer(); elapsedTime = 0; document.getElementById('display').innerText = "00:00.0"; } }
 
         function toggleTeam(name, color, id) {
+            if (teamsLocked) return; // 固定されていたら反応しない
             const btn = document.getElementById('btn-' + id);
             const index = activeTeams.findIndex(t => t.id === id);
             if (index > -1) { activeTeams.splice(index, 1); btn.classList.remove('active'); }
@@ -132,7 +142,18 @@
             generateMatches();
         }
 
+        function confirmTeams() {
+            if (activeTeams.length < 2) { alert("2チーム以上選択してください。"); return; }
+            if (confirm("参加チームを、固定しますか？")) {
+                teamsLocked = true;
+                const btn = document.getElementById('confirm-teams');
+                btn.innerText = "固定済";
+                btn.classList.add('locked');
+            }
+        }
+
         function generateMatches() {
+            if (teamsLocked) return; // 固定後は再生成しない
             const tbody = document.getElementById('matchBody');
             tbody.innerHTML = "";
             const n = activeTeams.length;
@@ -167,11 +188,8 @@
             if (confirm("試合結果を固定しますか？")) {
                 const row = btn.closest('tr');
                 row.classList.add('locked');
-                // トライボタンを削除（非表示）
                 row.querySelectorAll('.btn-try').forEach(b => b.style.display = 'none');
-                // 済ボタンを無効化
-                btn.disabled = true;
-                btn.innerText = "●";
+                btn.disabled = true; btn.innerText = "●";
             }
         }
     </script>
