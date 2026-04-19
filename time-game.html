@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Match Manager Pro</title>
+    <title>Match Manager Final</title>
     <style>
         :root {
             --red: #ff3b30; --blue: #007aff; --yellow: #ffcc00; --green: #34c759;
@@ -27,13 +27,13 @@
         .btn-stop { background-color: var(--red); }
         .btn-clear { background-color: var(--gray); }
 
-        /* チーム選択：丸いトグルボタン */
+        /* チーム選択 */
         .team-selection {
             display: flex; justify-content: center; gap: 15px; margin-bottom: 10px;
         }
         .team-circle {
-            width: 50px; height: 50px; border-radius: 50%; border: 3px solid transparent;
-            font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center;
+            width: 45px; height: 45px; border-radius: 50%; border: 3px solid transparent;
+            font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center;
             transition: 0.2s; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .t-red { background-color: #ff3b3044; color: #ff3b30; border-color: #ff3b3044; }
@@ -45,17 +45,29 @@
         .t-green { background-color: #34c75944; color: #34c759; border-color: #34c75944; }
         .t-green.active { background-color: var(--green); color: white; border-color: white; }
 
-        /* 対戦表 */
-        table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-        th { font-size: 11px; color: #666; padding-bottom: 5px; }
-        td { padding: 4px 2px; text-align: center; border-bottom: 1px solid #eee; }
+        /* 対戦表 7列対応 */
+        table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+        th { font-size: 10px; color: #666; padding-bottom: 5px; }
+        td { padding: 4px 1px; text-align: center; border-bottom: 1px solid #eee; transition: 0.3s; }
+        
+        /* 確定後の行スタイル */
+        tr.locked td { background-color: #efefef; color: #aaa; }
+        tr.locked .team-label { opacity: 0.8; } /* チームカラーは維持しつつ少し透過 */
+
         .btn-try {
-            background: var(--gray); color: white; border: none; width: 100%; height: 35px;
-            border-radius: 6px; font-size: 11px; font-weight: bold;
+            background: var(--gray); color: white; border: none; width: 100%; height: 32px;
+            border-radius: 6px; font-size: 10px; font-weight: bold;
         }
         .score-val { font-size: 18px; font-weight: bold; }
-        .team-label { 
-            display: block; padding: 4px 0; border-radius: 4px; color: white; font-weight: bold; 
+        .team-label { display: block; padding: 4px 0; border-radius: 4px; color: white; font-weight: bold; }
+        
+        /* 済ボタン（丸ボタン） */
+        .btn-done {
+            width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--gray);
+            background: white; color: var(--gray); font-size: 10px; font-weight: bold;
+        }
+        tr.locked .btn-done {
+            background: var(--gray); color: white; border: none;
         }
     </style>
 </head>
@@ -81,9 +93,10 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width:18%">トライ</th><th style="width:12%">得点</th>
-                    <th style="width:20%">チーム</th><th style="width:20%">チーム</th>
-                    <th style="width:12%">得点</th><th style="width:18%">トライ</th>
+                    <th style="width:15%">トライ</th><th style="width:11%">得点</th>
+                    <th style="width:19%">チーム</th><th style="width:19%">チーム</th>
+                    <th style="width:11%">得点</th><th style="width:15%">トライ</th>
+                    <th style="width:10%">済</th>
                 </tr>
             </thead>
             <tbody id="matchBody"></tbody>
@@ -94,16 +107,12 @@
         let startTime, elapsedTime = 0, timerInterval;
         let activeTeams = [];
 
-        // --- 更新時のアラート ---
         window.addEventListener('beforeunload', (e) => {
-            // ストップウォッチが動いている、または試合がある場合に警告
             if (elapsedTime > 0 || activeTeams.length > 0) {
-                e.preventDefault();
-                e.returnValue = "データがリセットされますが更新しますか？"; 
+                e.preventDefault(); e.returnValue = ""; 
             }
         });
 
-        // --- ストップウォッチ ---
         function updateTime() {
             const time = new Date(Date.now() - startTime + elapsedTime);
             const m = String(time.getMinutes()).padStart(2, '0');
@@ -115,51 +124,34 @@
         function stopTimer() { if (timerInterval) { elapsedTime += Date.now() - startTime; clearInterval(timerInterval); timerInterval = null; } }
         function resetTimer() { if (confirm("本当にクリアしますか？")) { stopTimer(); elapsedTime = 0; document.getElementById('display').innerText = "00:00.0"; } }
 
-        // --- チーム管理 ---
         function toggleTeam(name, color, id) {
             const btn = document.getElementById('btn-' + id);
             const index = activeTeams.findIndex(t => t.id === id);
-            if (index > -1) {
-                activeTeams.splice(index, 1);
-                btn.classList.remove('active');
-            } else {
-                activeTeams.push({ name, color, id });
-                btn.classList.add('active');
-            }
+            if (index > -1) { activeTeams.splice(index, 1); btn.classList.remove('active'); }
+            else { activeTeams.push({ name, color, id }); btn.classList.add('active'); }
             generateMatches();
         }
 
-        // --- バランスの良い対戦生成ロジック ---
         function generateMatches() {
             const tbody = document.getElementById('matchBody');
             tbody.innerHTML = "";
             const n = activeTeams.length;
             if (n < 2) return;
 
-            let pairs = [];
-            
-            if (n === 3) {
-                // 3チームの場合: AB -> BC -> AC (指示に近い形)
-                pairs = [[0,1], [1,2], [0,2]];
-            } else if (n === 4) {
-                // 4チームの場合: AB -> CD -> AC -> BD -> AD -> BC (指示通り)
-                pairs = [[0,1], [2,3], [0,2], [1,3], [0,3], [1,2]];
-            } else {
-                // 2チームなどの基本
-                for(let i=0; i<n; i++) for(let j=i+1; j<n; j++) pairs.push([i,j]);
-            }
+            let pairs = (n === 4) ? [[0,1], [2,3], [0,2], [1,3], [0,3], [1,2]] : 
+                        (n === 3) ? [[0,1], [1,2], [0,2]] : [];
+            if (pairs.length === 0) for(let i=0; i<n; i++) for(let j=i+1; j<n; j++) pairs.push([i,j]);
 
             pairs.forEach(pair => {
                 const row = document.createElement('tr');
-                const t1 = activeTeams[pair[0]];
-                const t2 = activeTeams[pair[1]];
                 row.innerHTML = `
-                    <td><button class="btn-try" onclick="addScore(this)">トライ</button></td>
+                    <td class="cell-try"><button class="btn-try" onclick="addScore(this)">トライ</button></td>
                     <td><span class="score-val">0</span></td>
-                    <td><span class="team-label" style="background:${t1.color}">${t1.name}</span></td>
-                    <td><span class="team-label" style="background:${t2.color}">${t2.name}</span></td>
+                    <td><span class="team-label" style="background:${activeTeams[pair[0]].color}">${activeTeams[pair[0]].name}</span></td>
+                    <td><span class="team-label" style="background:${activeTeams[pair[1]].color}">${activeTeams[pair[1]].name}</span></td>
                     <td><span class="score-val">0</span></td>
-                    <td><button class="btn-try" onclick="addScore(this)">トライ</button></td>
+                    <td class="cell-try"><button class="btn-try" onclick="addScore(this)">トライ</button></td>
+                    <td><button class="btn-done" onclick="lockMatch(this)">○</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -169,6 +161,18 @@
             const td = btn.parentElement;
             const scoreSpan = td.cellIndex === 0 ? td.nextElementSibling.querySelector('.score-val') : td.previousElementSibling.querySelector('.score-val');
             scoreSpan.innerText = parseInt(scoreSpan.innerText) + 1;
+        }
+
+        function lockMatch(btn) {
+            if (confirm("試合結果を固定しますか？")) {
+                const row = btn.closest('tr');
+                row.classList.add('locked');
+                // トライボタンを削除（非表示）
+                row.querySelectorAll('.btn-try').forEach(b => b.style.display = 'none');
+                // 済ボタンを無効化
+                btn.disabled = true;
+                btn.innerText = "●";
+            }
         }
     </script>
 </body>
