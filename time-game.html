@@ -3,56 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Team Match Manager</title>
+    <title>Match Manager</title>
     <style>
         :root {
-            --red: #ff4b2b; --blue: #007aff; --yellow: #ffcc00; --green: #4cd964;
-            --dark: #1c1c1e; --light: #f2f2f7;
+            --red: #ff3b30; --blue: #007aff; --yellow: #ffcc00; --green: #34c759;
+            --gray: #8e8e93; --light-gray: #e5e5ea;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--light);
-            margin: 0; padding: 20px;
-            user-select: none; /* 誤操作防止 */
+            font-family: -apple-system, sans-serif;
+            background-color: #f8f8f8; margin: 0; padding: 10px;
+            overflow: hidden; /* スクロール禁止 */
         }
-        /* ストップウォッチ */
+        /* ストップウォッチ：さらにコンパクトに */
         .timer-section {
-            background: white; border-radius: 15px; padding: 20px;
-            text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            background: white; border-radius: 12px; padding: 10px;
+            text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px;
         }
-        #display { font-size: 48px; font-weight: bold; margin-bottom: 15px; font-variant-numeric: tabular-nums; }
+        #display { font-size: 32px; font-weight: bold; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
         .controls button {
-            font-size: 18px; padding: 12px 24px; border-radius: 10px; border: none;
-            margin: 5px; color: white; font-weight: bold;
+            font-size: 14px; padding: 8px 16px; border-radius: 8px; border: none; margin: 0 4px; color: white;
         }
         .btn-start { background-color: var(--green); }
         .btn-stop { background-color: var(--red); }
-        .btn-clear { background-color: #8e8e93; }
+        .btn-clear { background-color: var(--gray); }
 
-        /* チーム選択 */
+        /* チーム選択：丸いボタン */
         .team-selection {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;
+            display: flex; justify-content: center; gap: 15px; margin-bottom: 10px;
         }
-        .team-btn {
-            padding: 15px; border: none; border-radius: 12px; color: white; font-weight: bold; font-size: 16px;
+        .team-circle {
+            width: 50px; height: 50px; border-radius: 50%; border: 3px solid transparent;
+            font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        .team-red { background-color: var(--red); }
-        .team-blue { background-color: var(--blue); }
-        .team-yellow { background-color: var(--yellow); color: black; }
-        .team-green { background-color: var(--green); }
+        /* OFF状態は薄く、ON状態（.active）は濃く */
+        .t-red { background-color: #ff3b3044; color: #ff3b30; border-color: #ff3b3044; }
+        .t-red.active { background-color: var(--red); color: white; border-color: white; }
+        
+        .t-blue { background-color: #007aff44; color: #007aff; border-color: #007aff44; }
+        .t-blue.active { background-color: var(--blue); color: white; border-color: white; }
 
-        /* 対戦表テーブル */
-        table {
-            width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 10px;
-        }
-        th { background: #e5e5ea; padding: 10px; font-size: 14px; }
-        td { background: white; text-align: center; padding: 12px 5px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
+        .t-yellow { background-color: #ffcc0044; color: #8a6d00; border-color: #ffcc0044; }
+        .t-yellow.active { background-color: var(--yellow); color: black; border-color: white; }
+
+        .t-green { background-color: #34c75944; color: #34c759; border-color: #34c75944; }
+        .t-green.active { background-color: var(--green); color: white; border-color: white; }
+
+        /* 対戦表：高さを圧縮 */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+        th { font-size: 11px; color: #666; padding-bottom: 5px; }
+        td { padding: 4px 2px; text-align: center; border-bottom: 1px solid #eee; }
         .btn-try {
-            background: #007aff; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px;
+            background: var(--gray); color: white; border: none; width: 100%; height: 35px;
+            border-radius: 6px; font-size: 11px; font-weight: bold;
         }
-        .score-val { font-size: 20px; font-weight: bold; width: 30px; display: inline-block; }
-        .team-label { color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 14px; }
+        .score-val { font-size: 18px; font-weight: bold; }
+        .team-label { 
+            display: block; padding: 4px 0; border-radius: 4px; color: white; font-weight: bold; 
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -67,30 +76,29 @@
     </div>
 
     <div class="team-selection">
-        <button class="team-btn team-red" onclick="addTeam('赤', '#ff4b2b')">赤チーム追加</button>
-        <button class="team-btn team-blue" onclick="addTeam('青', '#007aff')">青チーム追加</button>
-        <button class="team-btn team-yellow" onclick="addTeam('黄', '#ffcc00')">黄チーム追加</button>
-        <button class="team-btn team-green" onclick="addTeam('緑', '#4cd964')">緑チーム追加</button>
+        <div id="btn-red" class="team-circle t-red" onclick="toggleTeam('赤', '#ff3b30', 'red')">赤</div>
+        <div id="btn-blue" class="team-circle t-blue" onclick="toggleTeam('青', '#007aff', 'blue')">青</div>
+        <div id="btn-yellow" class="team-circle t-yellow" onclick="toggleTeam('黄', '#ffcc00', 'yellow')">黄</div>
+        <div id="btn-green" class="team-circle t-green" onclick="toggleTeam('緑', '#34c759', 'green')">緑</div>
     </div>
 
     <div id="match-container">
-        <table id="matchTable">
+        <table>
             <thead>
                 <tr>
-                    <th colspan="2">得点</th>
-                    <th>チーム</th>
-                    <th>チーム</th>
-                    <th colspan="2">得点</th>
+                    <th style="width:18%">トライ</th><th style="width:12%">得点</th>
+                    <th style="width:20%">チーム</th><th style="width:20%">チーム</th>
+                    <th style="width:12%">得点</th><th style="width:18%">トライ</th>
                 </tr>
             </thead>
-            <tbody id="matchBody">
-                </tbody>
+            <tbody id="matchBody"></tbody>
         </table>
     </div>
 
     <script>
-        // --- ストップウォッチ処理 ---
         let startTime, elapsedTime = 0, timerInterval;
+        let activeTeams = [];
+
         function updateTime() {
             const time = new Date(Date.now() - startTime + elapsedTime);
             const m = String(time.getMinutes()).padStart(2, '0');
@@ -98,49 +106,37 @@
             const ms = String(Math.floor(time.getMilliseconds() / 100));
             document.getElementById('display').innerText = `${m}:${s}.${ms}`;
         }
-        function startTimer() {
-            if (!timerInterval) {
-                startTime = Date.now();
-                timerInterval = setInterval(updateTime, 100);
-            }
-        }
-        function stopTimer() {
-            if (timerInterval) {
-                elapsedTime += Date.now() - startTime;
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-        }
-        function resetTimer() {
-            if (confirm("本当にクリアしますか？")) {
-                stopTimer();
-                elapsedTime = 0;
-                document.getElementById('display').innerText = "00:00.0";
-            }
-        }
+        function startTimer() { if (!timerInterval) { startTime = Date.now(); timerInterval = setInterval(updateTime, 100); } }
+        function stopTimer() { if (timerInterval) { elapsedTime += Date.now() - startTime; clearInterval(timerInterval); timerInterval = null; } }
+        function resetTimer() { if (confirm("本当にクリアしますか？")) { stopTimer(); elapsedTime = 0; document.getElementById('display').innerText = "00:00.0"; } }
 
-        // --- 試合管理処理 ---
-        let teams = [];
-
-        function addTeam(name, color) {
-            teams.push({ name, color });
+        function toggleTeam(name, color, id) {
+            const btn = document.getElementById('btn-' + id);
+            const index = activeTeams.findIndex(t => t.id === id);
+            
+            if (index > -1) {
+                activeTeams.splice(index, 1);
+                btn.classList.remove('active');
+            } else {
+                activeTeams.push({ name, color, id });
+                btn.classList.add('active');
+            }
             generateMatches();
         }
 
         function generateMatches() {
             const tbody = document.getElementById('matchBody');
             tbody.innerHTML = "";
-            if (teams.length < 2) return;
+            if (activeTeams.length < 2) return;
 
-            // 総当たりの組み合わせ作成
-            for (let i = 0; i < teams.length; i++) {
-                for (let j = i + 1; j < teams.length; j++) {
+            for (let i = 0; i < activeTeams.length; i++) {
+                for (let j = i + 1; j < activeTeams.length; j++) {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td><button class="btn-try" onclick="addScore(this)">トライ</button></td>
                         <td><span class="score-val">0</span></td>
-                        <td><span class="team-label" style="background:${teams[i].color}">${teams[i].name}</span></td>
-                        <td><span class="team-label" style="background:${teams[j].color}">${teams[j].name}</span></td>
+                        <td><span class="team-label" style="background:${activeTeams[i].color}">${activeTeams[i].name}</span></td>
+                        <td><span class="team-label" style="background:${activeTeams[j].color}">${activeTeams[j].name}</span></td>
                         <td><span class="score-val">0</span></td>
                         <td><button class="btn-try" onclick="addScore(this)">トライ</button></td>
                     `;
@@ -151,7 +147,6 @@
 
         function addScore(btn) {
             const td = btn.parentElement;
-            // 1列目なら隣の2列目、6列目なら手前の5列目のスコアを更新
             const scoreSpan = td.cellIndex === 0 ? td.nextElementSibling.querySelector('.score-val') : td.previousElementSibling.querySelector('.score-val');
             scoreSpan.innerText = parseInt(scoreSpan.innerText) + 1;
         }
