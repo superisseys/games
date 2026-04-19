@@ -8,6 +8,9 @@
         :root {
             --red: #ff3b30; --blue: #007aff; --yellow: #ffcc00; --green: #34c759;
             --gray: #8e8e93; --black: #1c1c1e;
+            /* ストップウォッチ用の新色 */
+            --navy: #001f3f; 
+            --pink: #ff2d55;
         }
         body {
             font-family: -apple-system, sans-serif;
@@ -16,6 +19,7 @@
             touch-action: manipulation;
         }
         
+        /* タイマーセクション */
         .timer-section {
             background: white; border-radius: 12px; padding: 10px;
             text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px;
@@ -23,11 +27,14 @@
         #display { font-size: 32px; font-weight: bold; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
         .controls button {
             font-size: 14px; padding: 8px 16px; border-radius: 8px; border: none; margin: 0 4px; color: white;
+            font-weight: bold;
         }
-        .btn-start { background-color: var(--green); }
-        .btn-stop { background-color: var(--red); }
+        /* スタート：ネイビー / ストップ：ピンク */
+        .btn-start { background-color: var(--navy); }
+        .btn-stop { background-color: var(--pink); }
         .btn-clear { background-color: var(--gray); }
 
+        /* チーム選択セクション */
         .team-selection-container {
             display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px;
         }
@@ -51,6 +58,7 @@
         }
         .btn-confirm-teams.locked { background-color: #ccc; pointer-events: none; }
 
+        /* 対戦表セクション */
         table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
         th { font-size: 10px; color: #666; padding-bottom: 5px; }
         td { padding: 4px 1px; text-align: center; border-bottom: 1px solid #eee; }
@@ -69,12 +77,11 @@
         }
         tr.locked .btn-done { background: var(--gray); color: white; border: none; }
 
-        /* 全リセットボタン */
         .reset-container {
             margin-top: 30px; text-align: center; padding-bottom: 40px;
         }
         .btn-full-reset {
-            background: none; border: 1px solid var(--red); color: var(--red);
+            background: none; border: 1px solid var(--pink); color: var(--pink);
             padding: 10px 20px; border-radius: 20px; font-size: 12px; font-weight: bold;
         }
     </style>
@@ -199,26 +206,18 @@
             }
         }
 
-        // --- 全リセット関数 ---
         function fullReset() {
             if (confirm("全てのデータ（タイマー、チーム、試合結果）を完全にリセットしますか？")) {
-                // タイマーリセット
                 stopTimer();
                 elapsedTime = 0;
                 document.getElementById('display').innerText = "00:00.0";
-                
-                // チームリセット
                 activeTeams = [];
                 teamsLocked = false;
                 document.querySelectorAll('.team-circle').forEach(btn => btn.classList.remove('active'));
                 const confirmBtn = document.getElementById('confirm-teams');
                 confirmBtn.innerText = "決定";
                 confirmBtn.classList.remove('locked');
-                
-                // 対戦表リセット
                 document.getElementById('matchBody').innerHTML = "";
-                
-                // ページ最上部へスクロール
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
