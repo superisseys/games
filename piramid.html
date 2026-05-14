@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pyramid Number Game - Auto</title>
+    <title>Pyramid Number Game - Sequential</title>
     <style>
         :root {
             --p1-color: #ff4d4d;
@@ -25,38 +25,39 @@
         }
 
         #header {
-            padding: 20px 10px;
+            padding: 15px 10px;
             text-align: center;
             width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
         }
 
-        /* 次に置く数字の表示 */
-        #next-info {
+        /* 各プレイヤーの次に出す数字カード */
+        .next-card {
             background: white;
-            padding: 10px 20px;
-            border-radius: 15px;
+            padding: 10px 15px;
+            border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: inline-block;
+            width: 80px;
+            transition: all 0.3s;
+            border: 3px solid transparent;
         }
 
-        #current-number {
-            font-size: 2rem;
-            font-weight: bold;
-            display: block;
+        .next-card.active {
+            transform: scale(1.1);
+            border-color: #333;
         }
 
-        #turn-label {
-            font-size: 0.9rem;
-            color: #666;
-        }
+        .card-label { font-size: 0.7rem; color: #666; display: block; margin-bottom: 2px;}
+        .card-num { font-size: 1.8rem; font-weight: bold; }
 
-        /* ターン交代のポップアップ通知 */
+        /* ターン交代ポップアップ */
         #turn-popup {
             position: fixed;
-            top: 40%;
-            left: 50%;
+            top: 40%; left: 50%;
             transform: translate(-50%, -50%) scale(0.5);
-            padding: 20px 40px;
+            padding: 15px 35px;
             border-radius: 50px;
             color: white;
             font-size: 1.5rem;
@@ -64,15 +65,10 @@
             z-index: 200;
             opacity: 0;
             pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
+        #turn-popup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-        #turn-popup.show {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-
-        /* ゲームボード */
         #game-board {
             flex-grow: 1;
             display: flex;
@@ -82,29 +78,17 @@
             width: 100%;
         }
 
-        .row {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 4px;
-        }
+        .row { display: flex; justify-content: center; margin-bottom: 4px; }
 
         .circle {
-            width: 48px;
-            height: 48px;
+            width: 46px; height: 46px;
             border: 2px solid #ccc;
             border-radius: 50%;
             margin: 3px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.3rem;
-            font-weight: bold;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.3rem; font-weight: bold;
             background-color: white;
             transition: transform 0.1s;
-        }
-
-        .circle:active {
-            transform: scale(0.9);
         }
 
         .circle.last-one {
@@ -114,67 +98,36 @@
         }
 
         @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
         }
 
-        .circle.highlight {
-            box-shadow: 0 0 15px #ffcc00;
-            z-index: 10;
-        }
+        .circle.highlight { box-shadow: 0 0 15px #ffcc00; z-index: 10; }
 
-        /* 設定エリア */
         #settings {
-            padding: 20px;
-            width: 100%;
-            text-align: center;
-            background: white;
-            border-radius: 20px 20px 0 0;
+            padding: 15px; width: 100%; text-align: center;
+            background: white; border-radius: 20px 20px 0 0;
         }
 
         .mode-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1rem;
-            background: #eee;
-            padding: 10px 20px;
-            border-radius: 30px;
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; background: #eee; padding: 8px 16px; border-radius: 30px;
         }
 
-        /* 結果表示 */
         #result-modal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
+            display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
+            background: white; padding: 30px; border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-            z-index: 300;
-            text-align: center;
-            width: 85%;
+            z-index: 300; text-align: center; width: 85%;
         }
-
         #overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            z-index: 299;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 299;
         }
-
         .reset-btn {
-            background: #333;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            margin-top: 20px;
+            background: #333; color: white; border: none;
+            padding: 12px 30px; border-radius: 10px; font-size: 1.1rem; margin-top: 20px;
         }
     </style>
 </head>
@@ -183,9 +136,13 @@
     <div id="turn-popup"></div>
 
     <div id="header">
-        <div id="next-info">
-            <span id="turn-label">赤の番：次はこれを置く</span>
-            <span id="current-number" style="color: var(--p1-color)">1</span>
+        <div id="card-p1" class="next-card active">
+            <span class="card-label">赤の次</span>
+            <span id="num-p1" class="card-num" style="color: var(--p1-color)">1</span>
+        </div>
+        <div id="card-p2" class="next-card">
+            <span class="card-label">青の次</span>
+            <span id="num-p2" class="card-num" style="color: var(--p2-color)">1</span>
         </div>
     </div>
 
@@ -199,14 +156,15 @@
 
     <div id="overlay"></div>
     <div id="result-modal">
-        <h2 id="winner-text">結果発表</h2>
+        <h2 id="winner-text"></h2>
         <p id="score-details" style="font-size: 1.5rem; font-weight: bold;"></p>
         <button class="reset-btn" onclick="initGame()">もう一度遊ぶ</button>
     </div>
 
     <script>
-        let currentPlayer = 1; // 1: 赤, 2: 青
-        let nextNumber = 1;
+        let currentPlayer = 1; 
+        let p1Next = 1;
+        let p2Next = 1;
         let gameState = [];
         const rows = 6;
         let isGameOver = false;
@@ -216,7 +174,8 @@
             isGameOver = false;
             isProcessing = false;
             currentPlayer = 1;
-            nextNumber = 1;
+            p1Next = 1;
+            p2Next = 1;
             gameState = [];
             document.getElementById('game-board').innerHTML = '';
             document.getElementById('result-modal').style.display = 'none';
@@ -248,28 +207,32 @@
         }
 
         function executeMove(cell) {
-            // 数字を配置
-            cell.value = nextNumber;
+            const currentNum = (currentPlayer === 1) ? p1Next : p2Next;
+            
+            cell.value = currentNum;
             cell.player = currentPlayer;
             
             const el = document.querySelector(`[data-row="${cell.row}"][data-col="${cell.col}"]`);
-            el.textContent = nextNumber;
+            el.textContent = currentNum;
             el.style.color = 'white';
-            const color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+            const color = (currentPlayer === 1) ? 'var(--p1-color)' : 'var(--p2-color)';
             el.style.backgroundColor = color;
             el.style.borderColor = color;
 
-            // 次の数字を準備 (1->2...->10->1)
-            nextNumber = nextNumber >= 10 ? 1 : nextNumber + 1;
+            // 個別の数値をカウントアップ
+            if (currentPlayer === 1) {
+                p1Next = p1Next >= 10 ? 1 : p1Next + 1;
+            } else {
+                p2Next = p2Next >= 10 ? 1 : p2Next + 1;
+            }
             
             if (checkGameOver()) return;
 
-            // プレイヤー交代
+            // 交代
             currentPlayer = currentPlayer === 1 ? 2 : 1;
             showTurnPopup();
             updateUI();
 
-            // CPUの番
             if (document.getElementById('cpu-mode').checked && currentPlayer === 2) {
                 isProcessing = true;
                 setTimeout(cpuTurn, 1000);
@@ -281,28 +244,21 @@
             const name = currentPlayer === 1 ? "赤" : "青";
             popup.textContent = `${name}の番です`;
             popup.style.backgroundColor = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
-            
             popup.classList.add('show');
-            setTimeout(() => {
-                popup.classList.remove('show');
-            }, 800);
+            setTimeout(() => popup.classList.remove('show'), 600);
         }
 
         function updateUI() {
-            const label = document.getElementById('turn-label');
-            const numDisplay = document.getElementById('current-number');
-            const name = currentPlayer === 1 ? "赤" : "青";
-            const color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+            document.getElementById('num-p1').textContent = p1Next;
+            document.getElementById('num-p2').textContent = p2Next;
             
-            label.textContent = `${name}の番：次はこれを置く`;
-            numDisplay.textContent = nextNumber;
-            numDisplay.style.color = color;
+            document.getElementById('card-p1').classList.toggle('active', currentPlayer === 1);
+            document.getElementById('card-p2').classList.toggle('active', currentPlayer === 2);
         }
 
         function cpuTurn() {
             const emptyCells = gameState.filter(c => c.value === null);
             if (emptyCells.length <= 1) return;
-
             const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
             isProcessing = false;
             executeMove(randomCell);
@@ -322,38 +278,30 @@
             const lastEl = document.querySelector(`[data-row="${lastCell.row}"][data-col="${lastCell.col}"]`);
             lastEl.classList.add('last-one');
 
-            // 隣接判定
             const neighbors = [
                 {r: lastCell.row, c: lastCell.col - 1}, {r: lastCell.row, c: lastCell.col + 1},
                 {r: lastCell.row - 1, c: lastCell.col - 1}, {r: lastCell.row - 1, c: lastCell.col},
                 {r: lastCell.row + 1, c: lastCell.col}, {r: lastCell.row + 1, c: lastCell.col + 1}
             ];
 
-            let p1Score = 0;
-            let p2Score = 0;
-
+            let p1Score = 0, p2Score = 0;
             neighbors.forEach(n => {
                 const cell = gameState.find(c => c.row === n.r && c.col === n.c);
                 if (cell && cell.value !== null) {
-                    const el = document.querySelector(`[data-row="${n.r}"][data-col="${n.c}"]`);
-                    el.classList.add('highlight');
+                    document.querySelector(`[data-row="${n.r}"][data-col="${n.c}"]`).classList.add('highlight');
                     if (cell.player === 1) p1Score += cell.value;
-                    if (cell.player === 2) p2Score += cell.value;
+                    else p2Score += cell.value;
                 }
             });
 
             setTimeout(() => {
-                let msg = "";
-                if(p1Score > p2Score) msg = "赤の勝ち！";
-                else if(p2Score > p1Score) msg = "青の勝ち！";
-                else msg = "引き分け！";
-
+                let msg = p1Score > p2Score ? "赤の勝ち！" : (p2Score > p1Score ? "青の勝ち！" : "引き分け！");
                 document.getElementById('winner-text').textContent = msg;
                 document.getElementById('score-details').innerHTML = 
                     `<span style="color:var(--p1-color)">赤: ${p1Score}</span> - <span style="color:var(--p2-color)">青: ${p2Score}</span>`;
                 document.getElementById('result-modal').style.display = 'block';
                 document.getElementById('overlay').style.display = 'block';
-            }, 1200);
+            }, 1000);
         }
 
         initGame();
