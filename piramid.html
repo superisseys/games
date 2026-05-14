@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pyramid Number Game</title>
+    <title>Pyramid Number Game - Auto</title>
     <style>
         :root {
             --p1-color: #ff4d4d;
             --p2-color: #4d79ff;
-            --bg-color: #f8f9fa;
+            --bg-color: #f0f2f5;
         }
 
         body {
@@ -16,7 +16,7 @@
             padding: 0;
             font-family: 'Helvetica Neue', Arial, sans-serif;
             background-color: var(--bg-color);
-            overflow: hidden; /* スクロール禁止 */
+            overflow: hidden;
             touch-action: manipulation;
             display: flex;
             flex-direction: column;
@@ -25,24 +25,54 @@
         }
 
         #header {
-            padding: 10px;
+            padding: 20px 10px;
             text-align: center;
             width: 100%;
         }
 
-        #turn-indicator {
-            font-size: 1.2rem;
-            font-weight: bold;
-            padding: 5px 15px;
-            border-radius: 20px;
+        /* 次に置く数字の表示 */
+        #next-info {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             display: inline-block;
-            margin-bottom: 5px;
         }
 
-        .p1-turn { background-color: var(--p1-color); color: white; }
-        .p2-turn { background-color: var(--p2-color); color: white; }
+        #current-number {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
 
-        /* ピラミッドエリア */
+        #turn-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        /* ターン交代のポップアップ通知 */
+        #turn-popup {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.5);
+            padding: 20px 40px;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #turn-popup.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* ゲームボード */
         #game-board {
             flex-grow: 1;
             display: flex;
@@ -50,83 +80,70 @@
             justify-content: center;
             align-items: center;
             width: 100%;
-            max-width: 400px;
         }
 
         .row {
             display: flex;
             justify-content: center;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .circle {
-            width: 45px;
-            height: 45px;
-            border: 2px solid #333;
+            width: 48px;
+            height: 48px;
+            border: 2px solid #ccc;
             border-radius: 50%;
-            margin: 2px;
+            margin: 3px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: bold;
             background-color: white;
-            transition: all 0.2s;
+            transition: transform 0.1s;
         }
 
-        .circle.last-one {
-            border: 3px dashed #ffcc00;
-            background-color: #fff9e6;
-        }
-
-        .circle.highlight {
-            box-shadow: 0 0 10px #ffcc00;
-            transform: scale(1.1);
-        }
-
-        /* 操作パネル */
-        #controls {
-            width: 100%;
-            background: white;
-            padding: 15px 0 30px 0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .number-buttons {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .num-btn {
-            width: 50px;
-            height: 50px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background: #eee;
-            font-size: 1.1rem;
-            font-weight: bold;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .num-btn.selected {
-            background: #333;
-            color: white;
+        .circle:active {
             transform: scale(0.9);
         }
 
-        .mode-toggle {
-            font-size: 0.9rem;
-            margin-bottom: 10px;
+        .circle.last-one {
+            border: 4px solid #ffcc00;
+            background-color: #fffde6;
+            animation: pulse 1.5s infinite;
         }
 
-        /* モーダル表示 */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .circle.highlight {
+            box-shadow: 0 0 15px #ffcc00;
+            z-index: 10;
+        }
+
+        /* 設定エリア */
+        #settings {
+            padding: 20px;
+            width: 100%;
+            text-align: center;
+            background: white;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .mode-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            background: #eee;
+            padding: 10px 20px;
+            border-radius: 30px;
+        }
+
+        /* 結果表示 */
         #result-modal {
             display: none;
             position: fixed;
@@ -135,72 +152,76 @@
             transform: translate(-50%, -50%);
             background: white;
             padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.3);
-            z-index: 100;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            z-index: 300;
             text-align: center;
-            width: 80%;
+            width: 85%;
         }
 
         #overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 99;
+            background: rgba(0,0,0,0.6);
+            z-index: 299;
         }
 
-        button.reset-btn {
-            margin-top: 15px;
-            padding: 10px 20px;
+        .reset-btn {
             background: #333;
             color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 1rem;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
+    <div id="turn-popup"></div>
+
     <div id="header">
-        <div id="turn-indicator" class="p1-turn">Player 1 の番</div>
-        <div class="mode-toggle">
-            <label><input type="checkbox" id="cpu-mode"> CPUと対戦</label>
+        <div id="next-info">
+            <span id="turn-label">赤の番：次はこれを置く</span>
+            <span id="current-number" style="color: var(--p1-color)">1</span>
         </div>
     </div>
 
     <div id="game-board"></div>
 
-    <div id="controls">
-        <div style="margin-bottom: 5px; color: #666; font-size: 0.8rem;">数字を選んでマスをタップ</div>
-        <div class="number-buttons" id="num-btns">
-            </div>
+    <div id="settings">
+        <label class="mode-toggle">
+            <input type="checkbox" id="cpu-mode"> CPUと対戦する
+        </label>
     </div>
 
     <div id="overlay"></div>
     <div id="result-modal">
-        <h2 id="winner-text"></h2>
-        <p id="score-details"></p>
+        <h2 id="winner-text">結果発表</h2>
+        <p id="score-details" style="font-size: 1.5rem; font-weight: bold;"></p>
         <button class="reset-btn" onclick="initGame()">もう一度遊ぶ</button>
     </div>
 
     <script>
-        let currentPlayer = 1;
-        let selectedNumber = 1;
-        let gameState = []; // {row, col, value, player}
+        let currentPlayer = 1; // 1: 赤, 2: 青
+        let nextNumber = 1;
+        let gameState = [];
         const rows = 6;
         let isGameOver = false;
+        let isProcessing = false;
 
-        // 初期化
         function initGame() {
             isGameOver = false;
+            isProcessing = false;
             currentPlayer = 1;
+            nextNumber = 1;
             gameState = [];
             document.getElementById('game-board').innerHTML = '';
             document.getElementById('result-modal').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
-            updateTurnIndicator();
+            updateUI();
 
             for (let i = 0; i < rows; i++) {
                 const rowDiv = document.createElement('div');
@@ -218,63 +239,73 @@
             }
         }
 
-        // 数字ボタン生成
-        const numBtnsContainer = document.getElementById('num-btns');
-        for (let i = 1; i <= 10; i++) {
-            const btn = document.createElement('div');
-            btn.className = 'num-btn' + (i === 1 ? ' selected' : '');
-            btn.textContent = i;
-            btn.onclick = () => {
-                document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                selectedNumber = i;
-            };
-            numBtnsContainer.appendChild(btn);
-        }
-
         function handleCircleClick(row, col) {
-            if (isGameOver) return;
+            if (isGameOver || isProcessing) return;
             const cell = gameState.find(c => c.row === row && c.col === col);
             if (cell.value !== null) return;
 
-            placeNumber(cell, selectedNumber);
-
-            if (!checkGameOver()) {
-                if (document.getElementById('cpu-mode').checked && currentPlayer === 2) {
-                    setTimeout(cpuTurn, 600);
-                }
-            }
+            executeMove(cell);
         }
 
-        function placeNumber(cell, num) {
-            cell.value = num;
+        function executeMove(cell) {
+            // 数字を配置
+            cell.value = nextNumber;
             cell.player = currentPlayer;
             
             const el = document.querySelector(`[data-row="${cell.row}"][data-col="${cell.col}"]`);
-            el.textContent = num;
+            el.textContent = nextNumber;
             el.style.color = 'white';
-            el.style.backgroundColor = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
-            el.style.borderColor = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+            const color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+            el.style.backgroundColor = color;
+            el.style.borderColor = color;
 
+            // 次の数字を準備 (1->2...->10->1)
+            nextNumber = nextNumber >= 10 ? 1 : nextNumber + 1;
+            
+            if (checkGameOver()) return;
+
+            // プレイヤー交代
             currentPlayer = currentPlayer === 1 ? 2 : 1;
-            updateTurnIndicator();
+            showTurnPopup();
+            updateUI();
+
+            // CPUの番
+            if (document.getElementById('cpu-mode').checked && currentPlayer === 2) {
+                isProcessing = true;
+                setTimeout(cpuTurn, 1000);
+            }
+        }
+
+        function showTurnPopup() {
+            const popup = document.getElementById('turn-popup');
+            const name = currentPlayer === 1 ? "赤" : "青";
+            popup.textContent = `${name}の番です`;
+            popup.style.backgroundColor = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+            
+            popup.classList.add('show');
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 800);
+        }
+
+        function updateUI() {
+            const label = document.getElementById('turn-label');
+            const numDisplay = document.getElementById('current-number');
+            const name = currentPlayer === 1 ? "赤" : "青";
+            const color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+            
+            label.textContent = `${name}の番：次はこれを置く`;
+            numDisplay.textContent = nextNumber;
+            numDisplay.style.color = color;
         }
 
         function cpuTurn() {
-            if (isGameOver) return;
             const emptyCells = gameState.filter(c => c.value === null);
             if (emptyCells.length <= 1) return;
 
             const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-            const randomNum = Math.floor(Math.random() * 10) + 1;
-            placeNumber(randomCell, randomNum);
-            checkGameOver();
-        }
-
-        function updateTurnIndicator() {
-            const indicator = document.getElementById('turn-indicator');
-            indicator.textContent = `Player ${currentPlayer} の番`;
-            indicator.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+            isProcessing = false;
+            executeMove(randomCell);
         }
 
         function checkGameOver() {
@@ -291,14 +322,11 @@
             const lastEl = document.querySelector(`[data-row="${lastCell.row}"][data-col="${lastCell.col}"]`);
             lastEl.classList.add('last-one');
 
-            // 隣接判定 (ピラミッド)
+            // 隣接判定
             const neighbors = [
-                {r: lastCell.row, c: lastCell.col - 1}, // 左
-                {r: lastCell.row, c: lastCell.col + 1}, // 右
-                {r: lastCell.row - 1, c: lastCell.col - 1}, // 左上
-                {r: lastCell.row - 1, c: lastCell.col},     // 右上
-                {r: lastCell.row + 1, c: lastCell.col},     // 左下
-                {r: lastCell.row + 1, c: lastCell.col + 1}  // 右下
+                {r: lastCell.row, c: lastCell.col - 1}, {r: lastCell.row, c: lastCell.col + 1},
+                {r: lastCell.row - 1, c: lastCell.col - 1}, {r: lastCell.row - 1, c: lastCell.col},
+                {r: lastCell.row + 1, c: lastCell.col}, {r: lastCell.row + 1, c: lastCell.col + 1}
             ];
 
             let p1Score = 0;
@@ -315,13 +343,17 @@
             });
 
             setTimeout(() => {
-                const winnerText = p1Score > p2Score ? "Player 1 の勝ち！" : (p2Score > p1Score ? "Player 2 の勝ち！" : "引き分け！");
-                document.getElementById('winner-text').textContent = winnerText;
+                let msg = "";
+                if(p1Score > p2Score) msg = "赤の勝ち！";
+                else if(p2Score > p1Score) msg = "青の勝ち！";
+                else msg = "引き分け！";
+
+                document.getElementById('winner-text').textContent = msg;
                 document.getElementById('score-details').innerHTML = 
-                    `<span style="color:var(--p1-color)">P1: ${p1Score}点</span> vs <span style="color:var(--p2-color)">P2: ${p2Score}点</span>`;
+                    `<span style="color:var(--p1-color)">赤: ${p1Score}</span> - <span style="color:var(--p2-color)">青: ${p2Score}</span>`;
                 document.getElementById('result-modal').style.display = 'block';
                 document.getElementById('overlay').style.display = 'block';
-            }, 800);
+            }, 1200);
         }
 
         initGame();
