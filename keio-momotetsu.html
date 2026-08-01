@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>リアル京王線桃鉄</title>
+  <style>
+    :root {
+      --keio-pink: #DD0077;
+      --keio-blue: #002A86;
+      --bg-color: #F4F6F9;
+      --card-bg: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: #333;
+      padding: 12px;
+      padding-top: max(12px, env(safe-area-inset-top));
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 100vh;
+    }
+
+    /* --- ダッシュボード --- */
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .dash-main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .dash-box {
+      padding: 12px 8px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 100px;
+      position: relative;
+    }
+
+    .box-target {
+      background: linear-gradient(135deg, var(--keio-pink), #B0005E);
+      color: white;
+    }
+
+    .box-current {
+      background: linear-gradient(135deg, var(--keio-blue), #001A54);
+      color: white;
+    }
+
+    .dash-label-badge {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      opacity: 0.9;
+      margin-bottom: 2px;
+    }
+
+    .dash-station-title {
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.2;
+      margin: 2px 0;
+      word-break: break-all;
+    }
+
+    .dash-line-sub {
+      font-size: 10px;
+      opacity: 0.85;
+    }
+
+    .btn-change-target {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    .distance-bar {
+      background: var(--card-bg);
+      border: 2px solid var(--keio-pink);
+      border-radius: 12px;
+      padding: 8px 12px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      font-size: 13px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .distance-bar b {
+      color: var(--keio-pink);
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .start-select-card {
+      background: var(--card-bg);
+      padding: 8px 12px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+
+    .start-select-card label {
+      font-size: 10px;
+      font-weight: bold;
+      color: #666;
+    }
+
+    select.station-select {
+      width: 100%;
+      padding: 5px;
+      font-size: 13px;
+      font-weight: bold;
+      border: 1px solid #CCC;
+      border-radius: 8px;
+      background: #FFF;
+      margin-top: 2px;
+      text-align: center;
+    }
+
+    /* アクションエリア */
+    .action-card {
+      background: var(--card-bg);
+      padding: 12px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .dice-display {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--keio-blue);
+      height: 44px;
+      line-height: 44px;
+      margin-bottom: 4px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      background-color: var(--keio-blue);
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 12px;
+      width: 100%;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 42, 134, 0.2);
+    }
+
+    .btn-pink {
+      background-color: var(--keio-pink);
+      box-shadow: 0 4px 10px rgba(221, 0, 119, 0.25);
+    }
+
+    .btn-secondary {
+      background-color: #555;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      width: 45%;
+    }
+
+    .btn-danger {
+      background-color: #D32F2F;
+      box-shadow: 0 4px 10px rgba(211, 47, 47, 0.25);
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border: 2px solid #666;
+      color: #666;
+      box-shadow: none;
+    }
+
+    .btn:disabled {
+      background-color: #CCC;
+      box-shadow: none;
+    }
+
+    /* 保有カードセクション */
+    .cards-section {
+      background: var(--card-bg);
+      padding: 12px;
+      border-radius: 16px;
+      flex-grow: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-item {
+      display: flex;
+      flex-direction: column;
+      padding: 8px 10px;
+      border: 1px solid #E0E0E0;
+      border-radius: 10px;
+      background: #FAF9F6;
+      gap: 4px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-type {
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: white;
+    }
+
+    .type-列車 { background-color: #002A86; }
+    .type-特殊 { background-color: #DD0077; }
+
+    .card-name {
+      font-size: 13px;
+      font-weight: bold;
+      flex-grow: 1;
+      margin-left: 8px;
+    }
+
+    .card-desc {
+      font-size: 10px;
+      color: #666;
+      line-height: 1.3;
+      background: #EEE;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+
+    .btn-use-card {
+      background: var(--keio-pink);
+      color: white;
+      border: none;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: bold;
+      border-radius: 6px;
+    }
+
+    .btn-use-card:disabled {
+      background: #CCC;
+      color: #888;
+    }
+
+    /* モーダル表示 */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+
+    .modal-card {
+      background: white;
+      width: 100%;
+      max-width: 340px;
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: var(--keio-blue);
+    }
+
+    .event-icon {
+      font-size: 38px;
+      margin-bottom: 8px;
+    }
+
+    .event-msg {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      color: #222;
+      line-height: 1.4;
+    }
+
+    .move-option-btn {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      margin: 6px 0;
+      border: 2px solid var(--keio-blue);
+      border-radius: 10px;
+      background: #F0F4FF;
+      font-size: 13px;
+      font-weight: bold;
+      color: #111;
+      text-align: left;
+    }
+
+    .move-option-btn span.dice-tag {
+      display: inline-block;
+      background: var(--keio-pink);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    .move-option-btn span.dist-tag {
+      display: inline-block;
+      float: right;
+      font-size: 11px;
+      color: var(--keio-pink);
+      font-weight: bold;
+    }
+
+    .history-list {
+      text-align: left;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .history-item {
+      background: #F8F9FA;
+      border-left: 4px solid var(--keio-blue);
+      padding: 8px 10px;
+      border-radius: 6px;
+    }
+
+    .history-item.card-act {
+      border-left-color: var(--keio-pink);
+      background: #FFF0F5;
+    }
+
+    .history-item.goal-act {
+      border-left-color: #FFD700;
+      background: #FFFDE7;
+      font-weight: bold;
+    }
+
+    .history-item .time {
+      font-size: 10px;
+      color: #888;
+      margin-bottom: 2px;
+    }
+
+    .log-box {
+      background: #222;
+      color: #00FF66;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 8px;
+      border-radius: 10px;
+      height: 75px;
+      overflow-y: auto;
+    }
+
+    .footer-actions {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- メインダッシュボード -->
+  <div class="dashboard">
+    <div class="dash-main-grid">
+      <div class="dash-box box-current">
+        <div class="dash-label-badge">📍 現在地</div>
+        <div class="dash-station-title" id="current-name">京王多摩川</div>
+        <div class="dash-line-sub" id="current-line">(相模原線)</div>
+      </div>
+
+      <div class="dash-box box-target">
+        <button class="btn-change-target" id="change-target-btn" style="display:none;" onclick="requestTargetChange()">変更</button>
+        <div class="dash-label-badge">🎯 目的地</div>
+        <div class="dash-station-title" id="target-name">未定</div>
+        <div class="dash-line-sub" id="target-line">---</div>
+      </div>
+    </div>
+
+    <div class="distance-bar" id="distance-bar">
+      「スロットで決める」または「自分で選ぶ」を押してください
+    </div>
+
+    <div class="start-select-card" id="start-select-container">
+      <label for="start-station-select">スタート駅の指定・変更:</label>
+      <select id="start-station-select" class="station-select" onchange="changeStartStation()">
+      </select>
+    </div>
+  </div>
+
+  <!-- メインアクション -->
+  <div class="action-card">
+    <div class="dice-display" id="dice-num">🎲</div>
+    <div class="btn-group" id="target-btn-group">
+      <button class="btn" id="main-btn">スロットで決める</button>
+      <button class="btn btn-secondary" id="manual-target-btn" onclick="openManualTargetPicker()">自分で選ぶ</button>
+    </div>
+  </div>
+
+  <!-- カード一覧 -->
+  <div class="cards-section">
+    <div class="section-title">
+      <span>手持ちカード</span>
+      <span id="card-count">0枚</span>
+    </div>
+    <div class="card-list" id="card-container"></div>
+  </div>
+
+  <!-- イベントログ -->
+  <div class="log-box" id="log">
+    > スタート駅を選び、「スロットで決める」または「自分で選ぶ」を押してください。
+  </div>
+
+  <!-- フッター・ゲーム終了・リセットボタン -->
+  <div class="footer-actions">
+    <button class="btn btn-danger" onclick="endGameAndShowHistory()">🏁 履歴ログ・結果を見る</button>
+    <button class="btn btn-outline" onclick="resetAllDataAndRestart()">🔄 新しく最初から遊ぶ (リセット)</button>
+  </div>
+
+  <!-- 汎用モーダル -->
+  <div id="game-modal" class="modal-overlay hidden" onclick="onModalOverlayClick(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-title" id="modal-title">タイトル</div>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script>
+    const STATIONS = {
+      "KO01": { id: "KO01", name: "新宿", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO02"], prev: [] },
+      "KO02": { id: "KO02", name: "笹塚", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO03"], prev: ["KO01"] },
+      "KO03": { id: "KO03", name: "代田橋", line: "京王線", stops: ["local"], transfer: [], next: ["KO04"], prev: ["KO02"] },
+      "KO04": { id: "KO04", name: "明大前", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: ["IN08"], next: ["KO05"], prev: ["KO03"] },
+      "KO05": { id: "KO05", name: "下高井戸", line: "京王線", stops: ["local", "rapid"], transfer: [], next: ["KO06"], prev: ["KO04"] },
+      "KO06": { id: "KO06", name: "桜上水", line: "京王線", stops: ["local", "rapid", "express"], transfer: [], next: ["KO07"], prev: ["KO05"] },
+      "KO07": { id: "KO07", name: "上北沢", line: "京王線", stops: ["local"], transfer: [], next: ["KO08"], prev: ["KO06"] },
+      "KO08": { id: "KO08", name: "八幡山", line: "京王線", stops: ["local", "rapid"], transfer: [], next: ["KO09"], prev: ["KO07"] },
+      "KO09": { id: "KO09", name: "芦花公園", line: "京王線", stops: ["local"], transfer: [], next: ["KO10"], prev: ["KO08"] },
+      "KO10": { id: "KO10", name: "千歳烏山", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO11"], prev: ["KO09"] },
+      "KO11": { id: "KO11", name: "仙川", line: "京王線", stops: ["local", "rapid"], transfer: [], next: ["KO12"], prev: ["KO10"] },
+      "KO12": { id: "KO12", name: "つつじヶ丘", line: "京王線", stops: ["local", "rapid", "express"], transfer: [], next: ["KO13"], prev: ["KO11"] },
+      "KO13": { id: "KO13", name: "柴崎", line: "京王線", stops: ["local"], transfer: [], next: ["KO14"], prev: ["KO12"] },
+      "KO14": { id: "KO14", name: "国領", line: "京王線", stops: ["local"], transfer: [], next: ["KO15"], prev: ["KO13"] },
+      "KO15": { id: "KO15", name: "布田", line: "京王線", stops: ["local"], transfer: [], next: ["KO16"], prev: ["KO14"] },
+      "KO16": { id: "KO16", name: "調布", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO17", "KO34"], prev: ["KO15"] },
+      "KO17": { id: "KO17", name: "飛田給", line: "京王線", stops: ["local", "rapid"], transfer: [], next: ["KO18"], prev: ["KO16"] },
+      "KO18": { id: "KO18", name: "武蔵野台", line: "京王線", stops: ["local"], transfer: [], next: ["KO19"], prev: ["KO17"] },
+      "KO19": { id: "KO19", name: "多磨霊園", line: "京王線", stops: ["local"], transfer: [], next: ["KO20"], prev: ["KO18"] },
+      "KO20": { id: "KO20", name: "東府中", line: "京王線", stops: ["local", "rapid", "express"], transfer: [], next: ["KO21"], prev: ["KO19"] },
+      "KO21": { id: "KO21", name: "府中", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO22"], prev: ["KO20"] },
+      "KO22": { id: "KO22", name: "分倍河原", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO23"], prev: ["KO21"] },
+      "KO23": { id: "KO23", name: "中河原", line: "京王線", stops: ["local"], transfer: [], next: ["KO24"], prev: ["KO22"] },
+      "KO24": { id: "KO24", name: "聖蹟桜ヶ丘", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO25"], prev: ["KO23"] },
+      "KO25": { id: "KO25", name: "百草園", line: "京王線", stops: ["local"], transfer: [], next: ["KO26"], prev: ["KO24"] },
+      "KO26": { id: "KO26", name: "高幡不動", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO27"], prev: ["KO25"] },
+      "KO27": { id: "KO27", name: "日野春日出", line: "京王線", stops: ["local"], transfer: [], next: ["KO28"], prev: ["KO26"] },
+      "KO28": { id: "KO28", name: "平山城址公園", line: "京王線", stops: ["local"], transfer: [], next: ["KO29"], prev: ["KO27"] },
+      "KO29": { id: "KO29", name: "長沼", line: "京王線", stops: ["local"], transfer: [], next: ["KO30"], prev: ["KO28"] },
+      "KO30": { id: "KO30", name: "北野", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO31", "KO48"], prev: ["KO29"] },
+      "KO31": { id: "KO31", name: "京王八王子", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: [], prev: ["KO30"] },
+
+      "KO34": { id: "KO34", name: "京王多摩川", line: "相模原線", stops: ["local", "rapid", "express"], transfer: [], next: ["KO35"], prev: ["KO16"] },
+      "KO35": { id: "KO35", name: "京王稲田堤", line: "相模原線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO36"], prev: ["KO34"] },
+      "KO36": { id: "KO36", name: "京王読売ランド", line: "相模原線", stops: ["local"], transfer: [], next: ["KO37"], prev: ["KO35"] },
+      "KO37": { id: "KO37", name: "稲城", line: "相模原線", stops: ["local"], transfer: [], next: ["KO38"], prev: ["KO36"] },
+      "KO38": { id: "KO38", name: "若葉台", line: "相模原線", stops: ["local"], transfer: [], next: ["KO39"], prev: ["KO37"] },
+      "KO39": { id: "KO39", name: "京王永山", line: "相模原線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO40"], prev: ["KO38"] },
+      "KO40": { id: "KO40", name: "京王多摩センター", line: "相模原線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO41"], prev: ["KO39"] },
+      "KO41": { id: "KO41", name: "南大沢", line: "相模原線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO42"], prev: ["KO40"] },
+      "KO42": { id: "KO42", name: "多摩境", line: "相模原線", stops: ["local"], transfer: [], next: ["KO43"], prev: ["KO41"] },
+      "KO43": { id: "KO43", name: "橋本", line: "相模原線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: [], prev: ["KO42"] },
+
+      "KO48": { id: "KO48", name: "京王片倉", line: "高尾線", stops: ["local"], transfer: [], next: ["KO49"], prev: ["KO30"] },
+      "KO49": { id: "KO49", name: "山田", line: "高尾線", stops: ["local"], transfer: [], next: ["KO50"], prev: ["KO48"] },
+      "KO50": { id: "KO50", name: "めじろ台", line: "高尾線", stops: ["local", "express", "limited"], transfer: [], next: ["KO51"], prev: ["KO49"] },
+      "KO51": { id: "KO51", name: "狭間", line: "高尾線", stops: ["local"], transfer: [], next: ["KO52"], prev: ["KO50"] },
+      "KO52": { id: "KO52", name: "高尾", line: "高尾線", stops: ["local", "express", "limited"], transfer: [], next: ["KO53"], prev: ["KO51"] },
+      "KO53": { id: "KO53", name: "高尾山口", line: "高尾線", stops: ["local", "express", "limited"], transfer: [], next: [], prev: ["KO52"] },
+
+      "IN01": { id: "IN01", name: "渋谷", line: "井の頭線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["IN02"], prev: [] },
+      "IN02": { id: "IN02", name: "神泉", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN03"], prev: ["IN01"] },
+      "IN03": { id: "IN03", name: "駒場東大前", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN04"], prev: ["IN02"] },
+      "IN04": { id: "IN04", name: "池ノ上", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN05"], prev: ["IN03"] },
+      "IN05": { id: "IN05", name: "下北沢", line: "井の頭線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["IN06"], prev: ["IN04"] },
+      "IN06": { id: "IN06", name: "新代田", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN07"], prev: ["IN05"] },
+      "IN07": { id: "IN07", name: "東松原", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN08"], prev: ["IN06"] },
+      "IN08": { id: "IN08", name: "明大前", line: "井の頭線", stops: ["local", "rapid", "express", "limited"], transfer: ["KO04"], next: ["IN09"], prev: ["IN07"] },
+      "IN09": { id: "IN09", name: "永福町", line: "井の頭線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["IN10"], prev: ["IN08"] },
+      "IN10": { id: "IN10", name: "西永福", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN11"], prev: ["IN09"] },
+      "IN11": { id: "IN11", name: "浜田山", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN12"], prev: ["IN10"] },
+      "IN12": { id: "IN12", name: "高井戸", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN13"], prev: ["IN11"] },
+      "IN13": { id: "IN13", name: "富士見ヶ丘", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN14"], prev: ["IN12"] },
+      "IN14": { id: "IN14", name: "久我山", line: "井の頭線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["IN15"], prev: ["IN13"] },
+      "IN15": { id: "IN15", name: "三鷹台", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN16"], prev: ["IN14"] },
+      "IN16": { id: "IN16", name: "井の頭公園", line: "井の頭線", stops: ["local"], transfer: [], next: ["IN17"], prev: ["IN15"] },
+      "IN17": { id: "IN17", name: "吉祥寺", line: "井の頭線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: [], prev: ["IN16"] }
+    };
+
+    const CARD_DEFINITIONS = {
+      "limited": { name: "特急カード", type: "列車", trainType: "limited", desc: "特急が停まる駅だけを数えて進める。" },
+      "express": { name: "急行カード", type: "列車", trainType: "express", desc: "急行が停まる駅だけを数えて進める。" },
+      "rapid": { name: "快速カード", type: "列車", trainType: "rapid", desc: "快速が停まる駅だけを数えて進める。" },
+      "dice2": { name: "2個振りカード", type: "特殊", desc: "サイコロを2個振って合計の目の分進める。" },
+      "dice3": { name: "3個振りカード", type: "特殊", desc: "サイコロを3個振って合計の目の分進める。" },
+      "big_eye": { name: "大目カード(4・5・6)", type: "特殊", desc: "サイコロで必ず【4・5・6】のどれかが出る。" },
+      "small_eye": { name: "小目カード(1・2・3)", type: "特殊", desc: "サイコロで必ず【1・2・3】のどれかが出る。" },
+      "special": { name: "スペシャルカード", type: "特殊", desc: "1〜6マス進んだ時に行ける駅一覧から自由に行き先を選べる。" },
+      "change_target": { name: "目的地変更カード", type: "特殊", desc: "目的地を別のランダムな駅に再設定する。" },
+      "jump_near": { name: "目的地近くにジャンプ", type: "特殊", desc: "目的地のすぐ手前の駅へワープする。" },
+      "warp_any": { name: "どこでもワープカード", type: "特殊", desc: "全69駅からランダムな1駅へ一気にワープする。" },
+      "trade_card": { name: "カード交換カード", type: "特殊", desc: "手持ちカードを3枚廃棄し、新しく1枚カードを引く。" }
+    };
+
+    let currentStation = STATIONS["KO34"];
+    let targetStation = null;
+    let gameState = "SET_TARGET";
+    let inventory = [];
+    let gameHistory = [];
+
+    function saveGameState() {
+      const dataData = {
+        currentStationId: currentStation.id,
+        targetStationId: targetStation ? targetStation.id : null,
+        gameState: gameState,
+        inventory: inventory,
+        gameHistory: gameHistory
+      };
+      localStorage.setItem("keio_momotetsu_save", JSON.stringify(dataData));
+    }
+
+    function loadGameState() {
+      const saved = localStorage.getItem("keio_momotetsu_save");
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.currentStationId && STATIONS[data.currentStationId]) {
+            currentStation = STATIONS[data.currentStationId];
+          }
+          if (data.targetStationId && STATIONS[data.targetStationId]) {
+            targetStation = STATIONS[data.targetStationId];
+          }
+          gameState = data.gameState || "SET_TARGET";
+          inventory = data.inventory || [];
+          gameHistory = data.gameHistory || [];
+
+          if (gameState === "ROLL_DICE") {
+            const mainBtn = document.getElementById("main-btn");
+            const manualBtn = document.getElementById("manual-target-btn");
+            mainBtn.innerText = "サイコロを振る";
+            manualBtn.style.display = "none";
+            document.getElementById("start-select-container").style.display = "none";
+          }
+          log("前回のプレイ状態を復元しました。");
+        } catch (e) {
+          console.error("Save data parse error", e);
+        }
+      }
+    }
+
+    // ★ データを全クリアして完全リセット
+    function resetAllDataAndRestart() {
+      if (confirm("これまでのプレイデータやカードを削除して、新しく最初から始めますか？")) {
+        localStorage.removeItem("keio_momotetsu_save");
+        location.reload(); // ページ再読み込み
+      }
+    }
+
+    function addHistory(type, text) {
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+      gameHistory.push({ type, text, time: timeStr });
+      saveGameState();
+    }
+
+    function log(msg) {
+      const logBox = document.getElementById("log");
+      logBox.innerHTML += `<br>> ${msg}`;
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initStartStationSelect();
+      loadGameState();
+      updateDashboardUI();
+      document.getElementById("main-btn").addEventListener("click", () => {
+        if (gameState === "SET_TARGET") spinTargetSlot();
+        else if (gameState === "ROLL_DICE") rollDice("local", 1);
+      });
+      renderCards();
+    });
+
+    function onModalOverlayClick(e) {
+      const modal = document.getElementById("game-modal");
+      modal.classList.add("hidden");
+      if (gameState === "ROLL_DICE") {
+        document.getElementById("main-btn").disabled = false;
+      }
+    }
+
+    function getShortestDistance(startId, targetId) {
+      if (!startId || !targetId || startId === targetId) return 0;
+      if (STATIONS[startId].transfer.includes(targetId)) return 0;
+
+      let queue = [{ id: startId, dist: 0 }];
+      let visited = new Set([startId]);
+
+      while (queue.length > 0) {
+        let curr = queue.shift();
+        let st = STATIONS[curr.id];
+        let neighbors = [...st.next, ...st.prev, ...st.transfer];
+
+        for (let nid of neighbors) {
+          if (nid === targetId || STATIONS[nid].transfer.includes(targetId)) return curr.dist + 1;
+          if (!visited.has(nid)) {
+            visited.add(nid);
+            queue.push({ id: nid, dist: curr.dist + 1 });
+          }
+        }
+      }
+      return 0;
+    }
+
+    function updateDashboardUI() {
+      document.getElementById("current-name").innerText = currentStation.name;
+      document.getElementById("current-line").innerText = `(${currentStation.line})`;
+
+      const changeBtn = document.getElementById("change-target-btn");
+
+      if (targetStation) {
+        document.getElementById("target-name").innerText = targetStation.name;
+        document.getElementById("target-line").innerText = `(${targetStation.line})`;
+
+        const remaining = getShortestDistance(currentStation.id, targetStation.id);
+        document.getElementById("distance-bar").innerHTML = `目的地まであと <b>${remaining}</b> 駅`;
+        changeBtn.style.display = "block";
+      } else {
+        document.getElementById("target-name").innerText = "未定";
+        document.getElementById("target-line").innerText = "---";
+        document.getElementById("distance-bar").innerHTML = `「スロットで決める」または「自分で選ぶ」を押してください`;
+        changeBtn.style.display = "none";
+      }
+      saveGameState();
+    }
+
+    function requestTargetChange() {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🎯 目的地の変更";
+      content.innerHTML = `
+        <div class="event-msg">目的地の決め方を選んでください:</div>
+        <button class="btn" style="margin-bottom:8px;" onclick="confirmSlotChange()">スロットでランダム決定</button>
+        <button class="btn btn-secondary" style="width:100%;" onclick="openManualTargetPicker()">自分で手動選択</button>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function confirmSlotChange() {
+      document.getElementById("game-modal").classList.add("hidden");
+      spinTargetSlot();
+    }
+
+    function initStartStationSelect() {
+      const select = document.getElementById("start-station-select");
+      select.innerHTML = "";
+      Object.values(STATIONS).forEach(st => {
+        const opt = document.createElement("option");
+        opt.value = st.id;
+        opt.innerText = `${st.name} (${st.line})`;
+        if (st.id === currentStation.id) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function changeStartStation() {
+      const select = document.getElementById("start-station-select");
+      currentStation = STATIONS[select.value];
+      log(`現在地を【${currentStation.name}（${currentStation.line}）】に変更。`);
+      updateDashboardUI();
+      renderCards();
+    }
+
+    function openManualTargetPicker() {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🎯 目的地を選択してください";
+      content.innerHTML = "";
+
+      Object.values(STATIONS).forEach(st => {
+        if (st.id === currentStation.id) return;
+
+        const remDist = getShortestDistance(currentStation.id, st.id);
+        const btn = document.createElement("button");
+        btn.className = "move-option-btn";
+        btn.innerHTML = `
+          <span class="dist-tag">距離: ${remDist} 駅</span>
+          <b>${st.name}駅</b> (${st.line})
+        `;
+        btn.onclick = () => setManualTarget(st);
+        content.appendChild(btn);
+      });
+
+      modal.classList.remove("hidden");
+    }
+
+    function setManualTarget(st) {
+      document.getElementById("game-modal").classList.add("hidden");
+      targetStation = st;
+      const msg = `目的地を【${targetStation.name}（${targetStation.line}）】に設定！`;
+      log(`🎯 ${msg}`);
+      addHistory("target", msg);
+
+      gameState = "ROLL_DICE";
+      const mainBtn = document.getElementById("main-btn");
+      const manualBtn = document.getElementById("manual-target-btn");
+      mainBtn.innerText = "サイコロを振る";
+      manualBtn.style.display = "none";
+      document.getElementById("start-select-container").style.display = "none";
+
+      updateDashboardUI();
+      renderCards();
+    }
+
+    function spinTargetSlot() {
+      const btn = document.getElementById("main-btn");
+      const manualBtn = document.getElementById("manual-target-btn");
+      const selectCard = document.getElementById("start-select-container");
+      btn.disabled = true;
+      manualBtn.style.display = "none";
+      selectCard.style.display = "none";
+      let count = 0;
+      const keys = Object.keys(STATIONS);
+
+      const interval = setInterval(() => {
+        const randKey = keys[Math.floor(Math.random() * keys.length)];
+        const randSt = STATIONS[randKey];
+        document.getElementById("target-line").innerText = `(${randSt.line})`;
+        document.getElementById("target-name").innerText = randSt.name;
+        count++;
+
+        if (count > 20) {
+          clearInterval(interval);
+          do {
+            const finalKey = keys[Math.floor(Math.random() * keys.length)];
+            targetStation = STATIONS[finalKey];
+          } while (targetStation.id === currentStation.id);
+
+          const msg = `目的地が【${targetStation.name}（${targetStation.line}）】に決定！`;
+          log(`🎯 ${msg}`);
+          addHistory("target", msg);
+
+          gameState = "ROLL_DICE";
+          btn.innerText = "サイコロを振る";
+          btn.disabled = false;
+          updateDashboardUI();
+          renderCards();
+        }
+      }, 60);
+    }
+
+    function getValidStepsForTrain(trainType, maxStepsAllowed = [1, 2, 3, 4, 5, 6]) {
+      const validSteps = [];
+      maxStepsAllowed.forEach(step => {
+        const testResults = [];
+        searchDestinations(currentStation.id, null, step, trainType, testResults, null);
+        if (testResults.length > 0) {
+          validSteps.push(step);
+        }
+      });
+      return validSteps;
+    }
+
+    function rollDice(trainType = "local", diceCount = 1, allowedEyes = null) {
+      const btn = document.getElementById("main-btn");
+      btn.disabled = true;
+
+      let baseAllowed = allowedEyes ? allowedEyes : [1, 2, 3, 4, 5, 6];
+      let validSteps = getValidStepsForTrain(trainType, baseAllowed);
+
+      if (validSteps.length === 0) {
+        showPopupNotice("移動不可", "現在地からその列車種別で進める駅が周囲にありません。");
+        btn.disabled = false;
+        return;
+      }
+
+      let count = 0;
+      const interval = setInterval(() => {
+        let total = 0;
+        let showArr = [];
+
+        for (let i = 0; i < diceCount; i++) {
+          let val = validSteps[Math.floor(Math.random() * validSteps.length)];
+          total += val;
+          showArr.push(val);
+        }
+
+        document.getElementById("dice-num").innerText = diceCount > 1 ? showArr.join("+") + ` = ${total}` : total;
+        count++;
+
+        if (count > 10) {
+          clearInterval(interval);
+          log(`🎲 サイコロ (個数:${diceCount}): 出目合計 ${total}`);
+          
+          setTimeout(() => {
+            showMoveOptions(total, trainType, diceCount);
+          }, 500);
+        }
+      }, 70);
+    }
+
+    function showMoveOptions(steps, trainType, diceCount = 1) {
+      const results = [];
+      searchDestinations(currentStation.id, null, steps, trainType, results, null);
+
+      const modal = document.getElementById("game-modal");
+      const modalContent = document.getElementById("modal-content");
+      document.getElementById("modal-title").innerText = `${steps}駅進むルート選択`;
+      modalContent.innerHTML = "";
+
+      if (results.length === 0) {
+        modalContent.innerHTML = "<p>この数で移動できる駅がありません。</p>";
+        setTimeout(() => {
+          modal.classList.add("hidden");
+          document.getElementById("main-btn").disabled = false;
+        }, 1500);
+      } else {
+        const uniqueResults = [];
+        results.forEach(res => {
+          if (!uniqueResults.some(u => u.station.id === res.station.id)) {
+            uniqueResults.push(res);
+          }
+        });
+
+        uniqueResults.forEach(opt => {
+          const remDist = targetStation ? getShortestDistance(opt.station.id, targetStation.id) : 0;
+
+          const btn = document.createElement("button");
+          btn.className = "move-option-btn";
+          btn.innerHTML = `
+            ${opt.dirText}
+            <span class="dist-tag">あと ${remDist} 駅</span><br>
+            <b>${opt.station.name}駅</b> (${opt.station.line})
+          `;
+          btn.onclick = () => requestRealMoveInstruction(opt.station, steps, diceCount);
+          modalContent.appendChild(btn);
+        });
+      }
+      modal.classList.remove("hidden");
+    }
+
+    function searchDestinations(currId, fromId, remainingSteps, trainType, results, initialDirText) {
+      const currSt = STATIONS[currId];
+
+      if (remainingSteps === 0) {
+        results.push({ station: currSt, dirText: initialDirText || "➔ 到着駅" });
+        return;
+      }
+
+      const neighbors = [];
+      currSt.next.forEach(id => neighbors.push({ id, dir: "➔ " + STATIONS[id].line + " 方面" }));
+      currSt.prev.forEach(id => neighbors.push({ id, dir: "⬅ " + STATIONS[id].line + " 方面" }));
+      currSt.transfer.forEach(id => neighbors.push({ id, dir: "🔀 " + STATIONS[id].line + " 乗り換え方面" }));
+
+      neighbors.forEach(n => {
+        if (n.id === fromId) return;
+
+        const nextSt = STATIONS[n.id];
+        const isTransfer = currSt.transfer.includes(n.id);
+        const isStop = (trainType === "local") || nextSt.stops.includes(trainType);
+
+        if (isStop || isTransfer) {
+          const dirText = initialDirText || n.dir;
+          searchDestinations(n.id, currId, remainingSteps - 1, trainType, results, dirText);
+        }
+      });
+    }
+
+    function requestRealMoveInstruction(targetSt, steps, diceCount) {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🚃 リアル移動指示";
+      content.innerHTML = `
+        <div class="event-icon">🚶‍♂️💨</div>
+        <div class="event-msg">
+          <b>【${targetSt.name}駅 (${targetSt.line})】</b> へ移動してください！<br><br>
+          <span style="font-size:12px; color:#555;">実際に駅へ移動完了したら「到着しました！」を押してください。</span>
+        </div>
+        <button class="btn btn-pink" onclick="confirmRealArrival('${targetSt.id}', ${steps}, ${diceCount})">到着しました！</button>
+      `;
+
+      modal.classList.remove("hidden");
+    }
+
+    function confirmRealArrival(targetStId, steps, diceCount) {
+      const targetSt = STATIONS[targetStId];
+      
+      const histText = `🎲 サイコロ${diceCount}個 (${steps}マス移動): 【${currentStation.name}駅】➔ 【${targetSt.name}駅】`;
+      addHistory("move", histText);
+
+      selectStation(targetSt);
+    }
+
+    function showSpecialCardStationPicker() {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🎴 行きたい駅を選択 (1〜6マス)";
+      content.innerHTML = "";
+
+      const allCandidates = [];
+
+      for (let steps = 1; steps <= 6; steps++) {
+        const results = [];
+        searchDestinations(currentStation.id, null, steps, "local", results, null);
+
+        results.forEach(res => {
+          if (!allCandidates.some(c => c.station.id === res.station.id)) {
+            allCandidates.push({ steps, station: res.station, dirText: res.dirText });
+          }
+        });
+      }
+
+      if (allCandidates.length === 0) {
+        content.innerHTML = "<p>移動できる駅がありません。</p>";
+      } else {
+        allCandidates.forEach(item => {
+          const remDist = targetStation ? getShortestDistance(item.station.id, targetStation.id) : 0;
+
+          const btn = document.createElement("button");
+          btn.className = "move-option-btn";
+          btn.innerHTML = `
+            <span class="dice-tag">サイコロ ${item.steps}</span> ${item.dirText}
+            <span class="dist-tag">あと ${remDist} 駅</span><br>
+            <b>${item.station.name}駅</b> (${item.station.line})
+          `;
+          btn.onclick = () => {
+            document.getElementById("dice-num").innerText = item.steps;
+            requestRealMoveInstruction(item.station, item.steps, 1);
+          };
+          content.appendChild(btn);
+        });
+      }
+
+      modal.classList.remove("hidden");
+    }
+
+    function selectStation(targetSt) {
+      document.getElementById("game-modal").classList.add("hidden");
+      const prevStName = currentStation.name;
+      currentStation = targetSt;
+      document.getElementById("start-station-select").value = currentStation.id;
+
+      updateDashboardUI();
+
+      const isGoal = currentStation.id === targetStation.id || (targetStation.transfer && targetStation.transfer.includes(currentStation.id));
+
+      if (isGoal) {
+        const goalLogMsg = `🎉【祝・ミッション達成！】目的地「${currentStation.name}駅」に無事到着しました！`;
+        log(`************************************`);
+        log(goalLogMsg);
+        log(`************************************`);
+        
+        addHistory("goal", `🎉【目的地到着】「${currentStation.name}駅 (${currentStation.line})」に無事到着しミッションクリア！`);
+
+        showArrivalCheckPopup();
+      } else {
+        triggerStationEvent(prevStName);
+      }
+    }
+
+    function showArrivalCheckPopup() {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🎉 ミッション達成！";
+      content.innerHTML = `
+        <div class="event-icon">🎊</div>
+        <div class="event-msg">
+          目的地 <b>【${currentStation.name}駅】</b> に無事到着しました！<br><br>
+          <b style='color:#00897B; font-size:18px;'>ミッションクリア！おめでとうございます！</b>
+        </div>
+        <button class="btn" onclick="resetNextRound()">次の目的地を決める</button>
+      `;
+
+      modal.classList.remove("hidden");
+    }
+
+    function triggerStationEvent(prevStName) {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = `移動完了 (現在地: ${currentStation.name})`;
+
+      const getCardSuccess = Math.random() < 0.5;
+
+      if (getCardSuccess) {
+        const cardKeys = Object.keys(CARD_DEFINITIONS);
+        const drawnKey = cardKeys[Math.floor(Math.random() * cardKeys.length)];
+        const cardDef = CARD_DEFINITIONS[drawnKey];
+
+        inventory.push({ id: Date.now(), key: drawnKey, ...cardDef });
+
+        content.innerHTML = `
+          <div class="event-icon">🎴</div>
+          <div class="event-msg">
+            <b>${prevStName}駅</b> から <b>${currentStation.name}駅 (${currentStation.line})</b> へ移動完了！<br><br>
+            🎁 カードGET: <b style="color:#002A86; font-size:16px;">「${cardDef.name}」</b><br>
+            <span style="font-size:11px; color:#555;">${cardDef.desc}</span>
+          </div>
+          <button class="btn" onclick="closeModal()">OK</button>
+        `;
+        log(`【${currentStation.name}駅】移動完了 ➔ カード「${cardDef.name}」を入手！`);
+      } else {
+        content.innerHTML = `
+          <div class="event-icon">🚃</div>
+          <div class="event-msg">
+            <b>${prevStName}駅</b> から <b>${currentStation.name}駅 (${currentStation.line})</b> へ移動完了！<br><br>
+            <span style="color:#666;">（カードは獲得できませんでした）</span>
+          </div>
+          <button class="btn" onclick="closeModal()">OK</button>
+        `;
+        log(`【${currentStation.name}駅】移動完了`);
+      }
+
+      modal.classList.remove("hidden");
+    }
+
+    function resetNextRound() {
+      document.getElementById("game-modal").classList.add("hidden");
+      gameState = "SET_TARGET";
+      targetStation = null;
+      const btn = document.getElementById("main-btn");
+      const manualBtn = document.getElementById("manual-target-btn");
+      btn.innerText = "スロットで決める";
+      manualBtn.style.display = "inline-block";
+      btn.disabled = false;
+      document.getElementById("start-select-container").style.display = "block";
+      updateDashboardUI();
+    }
+
+    function closeModal() {
+      document.getElementById("game-modal").classList.add("hidden");
+      document.getElementById("main-btn").disabled = false;
+      renderCards();
+    }
+
+    function renderCards() {
+      const container = document.getElementById("card-container");
+      document.getElementById("card-count").innerText = `${inventory.length}枚`;
+      container.innerHTML = "";
+
+      inventory.forEach((card, index) => {
+        const item = document.createElement("div");
+        item.className = "card-item";
+
+        let isUsable = gameState === "ROLL_DICE";
+        let statusText = "使う";
+
+        if (card.type === "列車") {
+          let canStop = currentStation.stops.includes(card.trainType);
+          if (!canStop && currentStation.transfer && currentStation.transfer.length > 0) {
+            currentStation.transfer.forEach(transId => {
+              if (STATIONS[transId] && STATIONS[transId].stops.includes(card.trainType)) {
+                canStop = true;
+              }
+            });
+          }
+
+          if (!canStop) {
+            isUsable = false;
+            statusText = "通過駅";
+          }
+        } else if (card.key === "trade_card" && inventory.length < 4) {
+          isUsable = false;
+          statusText = "枚数不足";
+        }
+
+        item.innerHTML = `
+          <div class="card-header">
+            <span class="card-type type-${card.type}">${card.type}</span>
+            <span class="card-name">${card.name}</span>
+            <button class="btn-use-card" ${isUsable ? "" : "disabled"} onclick="useCard(${index})">${statusText}</button>
+          </div>
+          <div class="card-desc">${card.desc}</div>
+        `;
+        container.appendChild(item);
+      });
+      saveGameState();
+    }
+
+    function useCard(index) {
+      const card = inventory[index];
+      log(`🎴 カード【${card.name}】を使用！`);
+      
+      inventory.splice(index, 1);
+      renderCards();
+
+      if (card.key === "special") {
+        addHistory("card", `🎴 カード使用: 【スペシャルカード】`);
+        showSpecialCardStationPicker();
+      } else if (card.key === "change_target") {
+        addHistory("card", `🎴 カード使用: 【目的地変更カード】`);
+        spinTargetSlot();
+      } else if (card.key === "jump_near") {
+        const fromStName = currentStation.name;
+        const targetPrevId = targetStation.prev[0] ? targetStation.prev[0] : targetStation.id;
+        const jumpSt = STATIONS[targetPrevId];
+        addHistory("card", `🎴 カード使用: 【目的地近くにジャンプ】 (${fromStName} ➔ ${jumpSt.name})`);
+        showJumpPopup(fromStName, jumpSt);
+      } else if (card.key === "warp_any") {
+        const keys = Object.keys(STATIONS);
+        const randKey = keys[Math.floor(Math.random() * keys.length)];
+        const warpSt = STATIONS[randKey];
+        addHistory("card", `🎴 カード使用: 【どこでもワープカード】 (${currentStation.name} ➔ ${warpSt.name})`);
+        showWarpAnyPopup(currentStation.name, warpSt);
+      } else if (card.key === "trade_card") {
+        inventory.sort(() => Math.random() - 0.5);
+        inventory.splice(0, 3);
+        
+        const cardKeys = Object.keys(CARD_DEFINITIONS);
+        const drawnKey = cardKeys[Math.floor(Math.random() * cardKeys.length)];
+        const cardDef = CARD_DEFINITIONS[drawnKey];
+        inventory.push({ id: Date.now(), key: drawnKey, ...cardDef });
+
+        addHistory("card", `🎴 カード使用: 【カード交換カード】 (新獲得: ${cardDef.name})`);
+        renderCards();
+        showPopupNotice("🎴 カード交換完了", `手持ちカード3枚を廃棄し、新しく<b>「${cardDef.name}」</b>を獲得しました！`);
+      } else if (card.key === "dice2") {
+        addHistory("card", `🎴 カード使用: 【2個振りカード】`);
+        rollDice("local", 2);
+      } else if (card.key === "dice3") {
+        addHistory("card", `🎴 カード使用: 【3個振りカード】`);
+        rollDice("local", 3);
+      } else if (card.key === "big_eye") {
+        addHistory("card", `🎴 カード使用: 【大目カード】`);
+        rollDice("local", 1, [4, 5, 6]);
+      } else if (card.key === "small_eye") {
+        addHistory("card", `🎴 カード使用: 【小目カード】`);
+        rollDice("local", 1, [1, 2, 3]);
+      } else if (card.trainType) {
+        addHistory("card", `🎴 カード使用: 【${card.name}】`);
+        rollDice(card.trainType, 1);
+      }
+    }
+
+    function showJumpPopup(fromStName, jumpSt) {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🚀 近くにジャンプ！";
+      content.innerHTML = `
+        <div class="event-icon">⚡</div>
+        <div class="event-msg">
+          <b>【${fromStName}駅】</b> から ワープ！<br><br>
+          目的地【${targetStation.name}】のすぐ手前、<br>
+          <b style="color:#DD0077; font-size:18px;">【${jumpSt.name}駅 (${jumpSt.line})】</b> へ移動しました！
+        </div>
+        <button class="btn" onclick="executeJump('${jumpSt.id}')">OK</button>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function showWarpAnyPopup(fromStName, warpSt) {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🌀 どこでもワープ！";
+      content.innerHTML = `
+        <div class="event-icon">🌌</div>
+        <div class="event-msg">
+          <b>【${fromStName}駅】</b> から ワープ！<br><br>
+          全駅の中からランダム選出された<br>
+          <b style="color:#002A86; font-size:18px;">【${warpSt.name}駅 (${warpSt.line})】</b> へ移動しました！
+        </div>
+        <button class="btn" onclick="executeJump('${warpSt.id}')">OK</button>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function executeJump(targetId) {
+      document.getElementById("game-modal").classList.add("hidden");
+      currentStation = STATIONS[targetId];
+      document.getElementById("start-station-select").value = currentStation.id;
+      log(`ワープ完了: 【${currentStation.name}駅】へ移動。`);
+      updateDashboardUI();
+      renderCards();
+      document.getElementById("main-btn").disabled = false;
+    }
+
+    function showPopupNotice(titleText, msgHtml) {
+      const modal = document.getElementById("game-modal");
+      document.getElementById("modal-title").innerText = titleText;
+      document.getElementById("modal-content").innerHTML = `
+        <div class="event-msg">${msgHtml}</div>
+        <button class="btn" onclick="closeModal()">OK</button>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function endGameAndShowHistory() {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🏁 プレイリザルト・行動履歴";
+
+      if (gameHistory.length === 0) {
+        content.innerHTML = `
+          <div class="event-msg">まだプレイ履歴がありません。</div>
+          <button class="btn" onclick="closeModal()">閉じる</button>
+        `;
+      } else {
+        let historyHtml = '<div class="history-list">';
+        gameHistory.forEach(item => {
+          let itemClass = '';
+          if (item.type === 'card') itemClass = 'card-act';
+          if (item.type === 'goal') itemClass = 'goal-act';
+
+          historyHtml += `
+            <div class="history-item ${itemClass}">
+              <div class="time">${item.time}</div>
+              <div>${item.text}</div>
+            </div>
+          `;
+        });
+        historyHtml += '</div>';
+
+        content.innerHTML = `
+          <div style="font-size:12px; font-weight:bold; margin-bottom:8px; color:#555;">これまでの移動・カード使用ログ:</div>
+          ${historyHtml}
+          <button class="btn" onclick="closeModal()">閉じる</button>
+        `;
+      }
+
+      modal.classList.remove("hidden");
+    }
+  </script>
+</body>
+</html>
