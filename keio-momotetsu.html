@@ -33,7 +33,6 @@
       min-height: 100vh;
     }
 
-    /* --- ダッシュボード --- */
     .dashboard {
       display: flex;
       flex-direction: column;
@@ -147,7 +146,6 @@
       text-align: center;
     }
 
-    /* アクションエリア */
     .action-card {
       background: var(--card-bg);
       padding: 12px;
@@ -157,10 +155,10 @@
     }
 
     .dice-display {
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 900;
       color: var(--keio-blue);
-      height: 44px;
+      min-height: 44px;
       line-height: 44px;
       margin-bottom: 4px;
     }
@@ -211,7 +209,6 @@
       box-shadow: none;
     }
 
-    /* 保有カードセクション */
     .cards-section {
       background: var(--card-bg);
       padding: 12px;
@@ -293,7 +290,6 @@
       color: #888;
     }
 
-    /* モーダル表示 */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -425,7 +421,6 @@
 </head>
 <body>
 
-  <!-- メインダッシュボード -->
   <div class="dashboard">
     <div class="dash-main-grid">
       <div class="dash-box box-current">
@@ -453,7 +448,6 @@
     </div>
   </div>
 
-  <!-- メインアクション -->
   <div class="action-card">
     <div class="dice-display" id="dice-num">🎲</div>
     <div class="btn-group" id="target-btn-group">
@@ -462,7 +456,6 @@
     </div>
   </div>
 
-  <!-- カード一覧 -->
   <div class="cards-section">
     <div class="section-title">
       <span>手持ちカード</span>
@@ -471,18 +464,15 @@
     <div class="card-list" id="card-container"></div>
   </div>
 
-  <!-- イベントログ -->
   <div class="log-box" id="log">
     > スタート駅を選び、「スロットで決める」または「自分で選ぶ」を押してください。
   </div>
 
-  <!-- フッター・ゲーム終了・リセットボタン -->
   <div class="footer-actions">
     <button class="btn btn-danger" onclick="endGameAndShowHistory()">🏁 履歴ログ・結果を見る</button>
     <button class="btn btn-outline" onclick="resetAllDataAndRestart()">🔄 新しく最初から遊ぶ (リセット)</button>
   </div>
 
-  <!-- 汎用モーダル -->
   <div id="game-modal" class="modal-overlay hidden" onclick="onModalOverlayClick(event)">
     <div class="modal-card" onclick="event.stopPropagation()">
       <div class="modal-title" id="modal-title">タイトル</div>
@@ -508,21 +498,22 @@
       "KO14": { id: "KO14", name: "国領", line: "京王線", stops: ["local"], transfer: [], next: ["KO15"], prev: ["KO13"] },
       "KO15": { id: "KO15", name: "布田", line: "京王線", stops: ["local"], transfer: [], next: ["KO16"], prev: ["KO14"] },
       "KO16": { id: "KO16", name: "調布", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO17", "KO34"], prev: ["KO15"] },
-      "KO17": { id: "KO17", name: "飛田給", line: "京王線", stops: ["local", "rapid"], transfer: [], next: ["KO18"], prev: ["KO16"] },
-      "KO18": { id: "KO18", name: "武蔵野台", line: "京王線", stops: ["local"], transfer: [], next: ["KO19"], prev: ["KO17"] },
-      "KO19": { id: "KO19", name: "多磨霊園", line: "京王線", stops: ["local"], transfer: [], next: ["KO20"], prev: ["KO18"] },
-      "KO20": { id: "KO20", name: "東府中", line: "京王線", stops: ["local", "rapid", "express"], transfer: [], next: ["KO21"], prev: ["KO19"] },
-      "KO21": { id: "KO21", name: "府中", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO22"], prev: ["KO20"] },
-      "KO22": { id: "KO22", name: "分倍河原", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO23"], prev: ["KO21"] },
-      "KO23": { id: "KO23", name: "中河原", line: "京王線", stops: ["local"], transfer: [], next: ["KO24"], prev: ["KO22"] },
-      "KO24": { id: "KO24", name: "聖蹟桜ヶ丘", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO25"], prev: ["KO23"] },
-      "KO25": { id: "KO25", name: "百草園", line: "京王線", stops: ["local"], transfer: [], next: ["KO26"], prev: ["KO24"] },
-      "KO26": { id: "KO26", name: "高幡不動", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO27"], prev: ["KO25"] },
-      "KO27": { id: "KO27", name: "日野春日出", line: "京王線", stops: ["local"], transfer: [], next: ["KO28"], prev: ["KO26"] },
-      "KO28": { id: "KO28", name: "平山城址公園", line: "京王線", stops: ["local"], transfer: [], next: ["KO29"], prev: ["KO27"] },
-      "KO29": { id: "KO29", name: "長沼", line: "京王線", stops: ["local"], transfer: [], next: ["KO30"], prev: ["KO28"] },
-      "KO30": { id: "KO30", name: "北野", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO31", "KO48"], prev: ["KO29"] },
-      "KO31": { id: "KO31", name: "京王八王子", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: [], prev: ["KO30"] },
+      "KO17": { id: "KO17", name: "西調布", line: "京王線", stops: ["local"], transfer: [], next: ["KO18"], prev: ["KO16"] },
+      "KO18": { id: "KO18", name: "飛田給", line: "京王線", stops: ["local", "rapid"], transfer: [], next: ["KO19"], prev: ["KO17"] },
+      "KO19": { id: "KO19", name: "武蔵野台", line: "京王線", stops: ["local"], transfer: [], next: ["KO20"], prev: ["KO18"] },
+      "KO20": { id: "KO20", name: "多磨霊園", line: "京王線", stops: ["local"], transfer: [], next: ["KO21"], prev: ["KO19"] },
+      "KO21": { id: "KO21", name: "東府中", line: "京王線", stops: ["local", "rapid", "express"], transfer: [], next: ["KO22"], prev: ["KO20"] },
+      "KO22": { id: "KO22", name: "府中", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO23"], prev: ["KO21"] },
+      "KO23": { id: "KO23", name: "分倍河原", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO24"], prev: ["KO22"] },
+      "KO24": { id: "KO24", name: "中河原", line: "京王線", stops: ["local"], transfer: [], next: ["KO25"], prev: ["KO23"] },
+      "KO25": { id: "KO25", name: "聖蹟桜ヶ丘", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO26"], prev: ["KO24"] },
+      "KO26": { id: "KO26", name: "百草園", line: "京王線", stops: ["local"], transfer: [], next: ["KO27"], prev: ["KO25"] },
+      "KO27": { id: "KO27", name: "高幡不動", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO28"], prev: ["KO26"] },
+      "KO28": { id: "KO28", name: "南平", line: "京王線", stops: ["local"], transfer: [], next: ["KO29"], prev: ["KO27"] },
+      "KO29": { id: "KO29", name: "平山城址公園", line: "京王線", stops: ["local"], transfer: [], next: ["KO30"], prev: ["KO28"] },
+      "KO30": { id: "KO30", name: "長沼", line: "京王線", stops: ["local"], transfer: [], next: ["KO31"], prev: ["KO29"] },
+      "KO31": { id: "KO31", name: "北野", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO32", "KO48"], prev: ["KO30"] },
+      "KO32": { id: "KO32", name: "京王八王子", line: "京王線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: [], prev: ["KO31"] },
 
       "KO34": { id: "KO34", name: "京王多摩川", line: "相模原線", stops: ["local", "rapid", "express"], transfer: [], next: ["KO35"], prev: ["KO16"] },
       "KO35": { id: "KO35", name: "京王稲田堤", line: "相模原線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: ["KO36"], prev: ["KO34"] },
@@ -535,7 +526,7 @@
       "KO42": { id: "KO42", name: "多摩境", line: "相模原線", stops: ["local"], transfer: [], next: ["KO43"], prev: ["KO41"] },
       "KO43": { id: "KO43", name: "橋本", line: "相模原線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: [], prev: ["KO42"] },
 
-      "KO48": { id: "KO48", name: "京王片倉", line: "高尾線", stops: ["local"], transfer: [], next: ["KO49"], prev: ["KO30"] },
+      "KO48": { id: "KO48", name: "京王片倉", line: "高尾線", stops: ["local"], transfer: [], next: ["KO49"], prev: ["KO31"] },
       "KO49": { id: "KO49", name: "山田", line: "高尾線", stops: ["local"], transfer: [], next: ["KO50"], prev: ["KO48"] },
       "KO50": { id: "KO50", name: "めじろ台", line: "高尾線", stops: ["local", "express", "limited"], transfer: [], next: ["KO51"], prev: ["KO49"] },
       "KO51": { id: "KO51", name: "狭間", line: "高尾線", stops: ["local"], transfer: [], next: ["KO52"], prev: ["KO50"] },
@@ -561,6 +552,7 @@
       "IN17": { id: "IN17", name: "吉祥寺", line: "井の頭線", stops: ["local", "rapid", "express", "limited"], transfer: [], next: [], prev: ["IN16"] }
     };
 
+    // ★ 新カード3種類を追加したカード定義
     const CARD_DEFINITIONS = {
       "limited": { name: "特急カード", type: "列車", trainType: "limited", desc: "特急が停まる駅だけを数えて進める。" },
       "express": { name: "急行カード", type: "列車", trainType: "express", desc: "急行が停まる駅だけを数えて進める。" },
@@ -573,7 +565,11 @@
       "change_target": { name: "目的地変更カード", type: "特殊", desc: "目的地を別のランダムな駅に再設定する。" },
       "jump_near": { name: "目的地近くにジャンプ", type: "特殊", desc: "目的地のすぐ手前の駅へワープする。" },
       "warp_any": { name: "どこでもワープカード", type: "特殊", desc: "全69駅からランダムな1駅へ一気にワープする。" },
-      "trade_card": { name: "カード交換カード", type: "特殊", desc: "手持ちカードを3枚廃棄し、新しく1枚カードを引く。" }
+      "trade_card": { name: "カード交換カード", type: "特殊", desc: "手持ちカードを3枚廃棄し、新しく1枚カードを引く。" },
+      // ★ 新規追加の3カード
+      "jump_target": { name: "目的地にジャンプ", type: "特殊", desc: "目的地へ一気にワープして即ゴール（クリア）する。" },
+      "choose_dice2": { name: "サイコロ2個から選べる", type: "特殊", desc: "サイコロを2個振り、出た目のどちらか好きな歩数を選べる。" },
+      "choose_dice3": { name: "サイコロ3個から選べる", type: "特殊", desc: "サイコロを3個振り、出た目のどれか好きな歩数を選べる。" }
     };
 
     let currentStation = STATIONS["KO34"];
@@ -581,6 +577,7 @@
     let gameState = "SET_TARGET";
     let inventory = [];
     let gameHistory = [];
+    let movingTargetStation = null;
 
     function saveGameState() {
       const dataData = {
@@ -588,7 +585,8 @@
         targetStationId: targetStation ? targetStation.id : null,
         gameState: gameState,
         inventory: inventory,
-        gameHistory: gameHistory
+        gameHistory: gameHistory,
+        movingTargetStationId: movingTargetStation ? movingTargetStation.id : null
       };
       localStorage.setItem("keio_momotetsu_save", JSON.stringify(dataData));
     }
@@ -615,6 +613,14 @@
             manualBtn.style.display = "none";
             document.getElementById("start-select-container").style.display = "none";
           }
+
+          if (data.movingTargetStationId && STATIONS[data.movingTargetStationId]) {
+            movingTargetStation = STATIONS[data.movingTargetStationId];
+            setTimeout(() => {
+              showRealMoveModal(movingTargetStation);
+            }, 300);
+          }
+
           log("前回のプレイ状態を復元しました。");
         } catch (e) {
           console.error("Save data parse error", e);
@@ -622,11 +628,10 @@
       }
     }
 
-    // ★ データを全クリアして完全リセット
     function resetAllDataAndRestart() {
       if (confirm("これまでのプレイデータやカードを削除して、新しく最初から始めますか？")) {
         localStorage.removeItem("keio_momotetsu_save");
-        location.reload(); // ページ再読み込み
+        location.reload();
       }
     }
 
@@ -655,6 +660,8 @@
     });
 
     function onModalOverlayClick(e) {
+      if (movingTargetStation) return;
+
       const modal = document.getElementById("game-modal");
       modal.classList.add("hidden");
       if (gameState === "ROLL_DICE") {
@@ -838,6 +845,24 @@
       return validSteps;
     }
 
+    // ★ 単一ダイス生成ロジック（残り1〜6マスの時、50%の確率でピッタリ補正）
+    function getSingleDiceValue(validSteps) {
+      if (!targetStation) {
+        return validSteps[Math.floor(Math.random() * validSteps.length)];
+      }
+
+      const remDist = getShortestDistance(currentStation.id, targetStation.id);
+
+      // 残り距離が1〜6マスで、かつ有効歩数に含まれている場合、50%の確率でピッタリの目を選択
+      if (remDist >= 1 && remDist <= 6 && validSteps.includes(remDist)) {
+        if (Math.random() < 0.5) {
+          return remDist;
+        }
+      }
+
+      return validSteps[Math.floor(Math.random() * validSteps.length)];
+    }
+
     function rollDice(trainType = "local", diceCount = 1, allowedEyes = null) {
       const btn = document.getElementById("main-btn");
       btn.disabled = true;
@@ -857,7 +882,7 @@
         let showArr = [];
 
         for (let i = 0; i < diceCount; i++) {
-          let val = validSteps[Math.floor(Math.random() * validSteps.length)];
+          let val = getSingleDiceValue(validSteps);
           total += val;
           showArr.push(val);
         }
@@ -868,12 +893,77 @@
         if (count > 10) {
           clearInterval(interval);
           log(`🎲 サイコロ (個数:${diceCount}): 出目合計 ${total}`);
-          
+          saveGameState();
+
           setTimeout(() => {
             showMoveOptions(total, trainType, diceCount);
           }, 500);
         }
       }, 70);
+    }
+
+    // ★ サイコロを複数振って「1つ選べる」特別ロール処理
+    function rollChooseDice(diceCount) {
+      const btn = document.getElementById("main-btn");
+      btn.disabled = true;
+
+      let validSteps = getValidStepsForTrain("local", [1, 2, 3, 4, 5, 6]);
+
+      if (validSteps.length === 0) {
+        showPopupNotice("移動不可", "現在地から進める駅がありません。");
+        btn.disabled = false;
+        return;
+      }
+
+      let count = 0;
+      let finalResults = [];
+
+      const interval = setInterval(() => {
+        finalResults = [];
+        for (let i = 0; i < diceCount; i++) {
+          finalResults.push(getSingleDiceValue(validSteps));
+        }
+
+        document.getElementById("dice-num").innerText = finalResults.map(val => `[${val}]`).join(" ");
+        count++;
+
+        if (count > 10) {
+          clearInterval(interval);
+          log(`🎲 サイコロ${diceCount}個振り選択: 出目 ${finalResults.join(", ")}`);
+          saveGameState();
+
+          setTimeout(() => {
+            showChooseDiceOptionsModal(finalResults);
+          }, 500);
+        }
+      }, 70);
+    }
+
+    // ★ 出た目の中から選ぶモーダル表示
+    function showChooseDiceOptionsModal(diceValues) {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      // 重複する目を整理（昇順）
+      const uniqueValues = [...new Set(diceValues)].sort((a, b) => a - b);
+
+      title.innerText = "🎲 進む目を選んでください";
+      content.innerHTML = `<div class="event-msg">出た目から好きな歩数を1つ選んで移動します:</div>`;
+
+      uniqueValues.forEach(val => {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.style.marginBottom = "8px";
+        btn.innerText = `🎲 【 ${val} マス 】進む`;
+        btn.onclick = () => {
+          document.getElementById("dice-num").innerText = val;
+          showMoveOptions(val, "local", 1);
+        };
+        content.appendChild(btn);
+      });
+
+      modal.classList.remove("hidden");
     }
 
     function showMoveOptions(steps, trainType, diceCount = 1) {
@@ -944,6 +1034,15 @@
     }
 
     function requestRealMoveInstruction(targetSt, steps, diceCount) {
+      movingTargetStation = targetSt;
+      
+      const histText = `🎲 サイコロ${diceCount}個 (${steps}マス移動): 【${currentStation.name}駅】➔ 【${targetSt.name}駅】`;
+      addHistory("move", histText);
+
+      showRealMoveModal(targetSt);
+    }
+
+    function showRealMoveModal(targetSt) {
       const modal = document.getElementById("game-modal");
       const title = document.getElementById("modal-title");
       const content = document.getElementById("modal-content");
@@ -955,18 +1054,15 @@
           <b>【${targetSt.name}駅 (${targetSt.line})】</b> へ移動してください！<br><br>
           <span style="font-size:12px; color:#555;">実際に駅へ移動完了したら「到着しました！」を押してください。</span>
         </div>
-        <button class="btn btn-pink" onclick="confirmRealArrival('${targetSt.id}', ${steps}, ${diceCount})">到着しました！</button>
+        <button class="btn btn-pink" onclick="confirmRealArrival('${targetSt.id}')">到着しました！</button>
       `;
 
       modal.classList.remove("hidden");
     }
 
-    function confirmRealArrival(targetStId, steps, diceCount) {
+    function confirmRealArrival(targetStId) {
       const targetSt = STATIONS[targetStId];
-      
-      const histText = `🎲 サイコロ${diceCount}個 (${steps}マス移動): 【${currentStation.name}駅】➔ 【${targetSt.name}駅】`;
-      addHistory("move", histText);
-
+      movingTargetStation = null;
       selectStation(targetSt);
     }
 
@@ -1198,6 +1294,18 @@
         addHistory("card", `🎴 カード使用: 【カード交換カード】 (新獲得: ${cardDef.name})`);
         renderCards();
         showPopupNotice("🎴 カード交換完了", `手持ちカード3枚を廃棄し、新しく<b>「${cardDef.name}」</b>を獲得しました！`);
+      } else if (card.key === "jump_target") {
+        // ★ 新規: 目的地に直接ジャンプ（ワープ）
+        addHistory("card", `🎴 カード使用: 【目的地にジャンプ】 (${currentStation.name} ➔ ${targetStation.name})`);
+        selectStation(targetStation);
+      } else if (card.key === "choose_dice2") {
+        // ★ 新規: サイコロ2個から選べる
+        addHistory("card", `🎴 カード使用: 【サイコロ2個から選べる】`);
+        rollChooseDice(2);
+      } else if (card.key === "choose_dice3") {
+        // ★ 新規: サイコロ3個から選べる
+        addHistory("card", `🎴 カード使用: 【サイコロ3個から選べる】`);
+        rollChooseDice(3);
       } else if (card.key === "dice2") {
         addHistory("card", `🎴 カード使用: 【2個振りカード】`);
         rollDice("local", 2);
