@@ -450,7 +450,7 @@
     </div>
 
     <div class="distance-bar" id="distance-bar">
-      「スロットで決める」または「自分で選ぶ」を押してください
+      目的地を決めます。「スロットで決める」または「自分で選ぶ」を押してください
     </div>
 
     <div class="start-select-card" id="start-select-container">
@@ -566,7 +566,6 @@
       "ST_KICHIJOJI": { id: "ST_KICHIJOJI", name: "吉祥寺", line: "井の頭線", code: "IN17", neighbors: ["ST_INOKASHIRAKOEN"] }
     };
 
-    // 列車種別カード（特急・急行・快速）を削除した新カード一覧
     const CARD_DEFINITIONS = {
       "dice2": { name: "2個振りカード", type: "移動", desc: "サイコロを2個振って合計の目の分進める。" },
       "dice3": { name: "3個振りカード", type: "移動", desc: "サイコロを3個振って合計の目の分進める。" },
@@ -716,7 +715,7 @@
       } else {
         document.getElementById("target-name").innerText = "未定";
         document.getElementById("target-line").innerText = "---";
-        document.getElementById("distance-bar").innerHTML = `「スロットで決める」または「自分で選ぶ」を押してください`;
+        document.getElementById("distance-bar").innerHTML = `目的地を決めます。「スロットで決める」または「自分で選ぶ」を押してください`;
         changeBtn.style.display = "none";
       }
       saveGameState();
@@ -1162,33 +1161,15 @@
       }
     }
 
+    // ★ 目的地（ゴール）到着時：豪華な「3枚から1枚選べる報酬」ポップアップ
     function showArrivalCheckPopup() {
       const modal = document.getElementById("game-modal");
       const title = document.getElementById("modal-title");
       const content = document.getElementById("modal-content");
 
       title.innerText = "🎉 ミッション達成！";
-      content.innerHTML = `
-        <div class="event-icon">🎊</div>
-        <div class="event-msg">
-          目的地 <b>【${currentStation.name}駅】</b> に無事到着しました！<br><br>
-          <b style='color:#00897B; font-size:18px;'>ミッションクリア！おめでとうございます！</b>
-        </div>
-        <button class="btn" onclick="resetNextRound()">次の目的地を決める</button>
-      `;
-
-      modal.classList.remove("hidden");
-    }
-
-    function triggerStationEvent(prevStName) {
-      const modal = document.getElementById("game-modal");
-      const title = document.getElementById("modal-title");
-      const content = document.getElementById("modal-content");
-
-      title.innerText = `駅に到着！ (${currentStation.name})`;
 
       const cardKeys = Object.keys(CARD_DEFINITIONS);
-      
       const candidateKeys = [];
       while (candidateKeys.length < 3) {
         const k = cardKeys[Math.floor(Math.random() * cardKeys.length)];
@@ -1210,14 +1191,57 @@
       });
 
       content.innerHTML = `
-        <div class="event-icon">🎁</div>
+        <div class="event-icon">🎊</div>
         <div class="event-msg" style="margin-bottom:8px;">
-          <b>${prevStName}駅</b> ➔ <b>${currentStation.name}駅</b> 到着！<br>
-          カードを1枚選んで獲得できます！
+          目的地 <b>【${currentStation.name}駅】</b> に無事到着！<br>
+          <b style='color:#00897B;'>ミッションクリア報酬！</b><br>
+          好きなカードを1枚選んで獲得できます！
         </div>
         ${optionsHtml}
-        <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">カードを入手しない</button>
+        <button class="btn btn-pink" style="margin-top:12px;" onclick="resetNextRound()">カードを選ばず次の目的地を決める</button>
       `;
+
+      modal.classList.remove("hidden");
+    }
+
+    // ★ 途中駅到着時：50%の確率でランダムカード1枚GET（今まで通り）
+    function triggerStationEvent(prevStName) {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = `移動完了 (現在地: ${currentStation.name})`;
+
+      const getCardSuccess = Math.random() < 0.5;
+
+      if (getCardSuccess) {
+        const cardKeys = Object.keys(CARD_DEFINITIONS);
+        const drawnKey = cardKeys[Math.floor(Math.random() * cardKeys.length)];
+        const cardDef = CARD_DEFINITIONS[drawnKey];
+
+        inventory.push({ id: Date.now(), key: drawnKey, ...cardDef });
+
+        content.innerHTML = `
+          <div class="event-icon">🎴</div>
+          <div class="event-msg">
+            <b>${prevStName}駅</b> から <b>${currentStation.name}駅 (${currentStation.line})</b> へ移動完了！<br><br>
+            🎁 カードGET: <b style="color:#002A86; font-size:16px;">「${cardDef.name}」</b><br>
+            <span style="font-size:11px; color:#555;">${cardDef.desc}</span>
+          </div>
+          <button class="btn" onclick="closeModal()">OK</button>
+        `;
+        log(`【${currentStation.name}駅】移動完了 ➔ カード「${cardDef.name}」を入手！`);
+      } else {
+        content.innerHTML = `
+          <div class="event-icon">🚃</div>
+          <div class="event-msg">
+            <b>${prevStName}駅</b> から <b>${currentStation.name}駅 (${currentStation.line})</b> へ移動完了！<br><br>
+            <span style="color:#666;">（カードは獲得できませんでした）</span>
+          </div>
+          <button class="btn" onclick="closeModal()">OK</button>
+        `;
+        log(`【${currentStation.name}駅】移動完了`);
+      }
 
       modal.classList.remove("hidden");
     }
@@ -1226,8 +1250,8 @@
       const cardDef = CARD_DEFINITIONS[cardKey];
       inventory.push({ id: Date.now(), key: cardKey, ...cardDef });
       
-      log(`【${currentStation.name}駅】カード「${cardDef.name}」を選択してGET！`);
-      closeModal();
+      log(`【ミッション達成報酬】カード「${cardDef.name}」を選択してGET！`);
+      resetNextRound();
     }
 
     function resetNextRound() {
