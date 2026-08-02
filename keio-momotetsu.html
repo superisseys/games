@@ -256,7 +256,7 @@
       color: white;
     }
 
-    .type-列車 { background-color: #002A86; }
+    .type-移動 { background-color: #002A86; }
     .type-特殊 { background-color: #DD0077; }
 
     .card-name {
@@ -363,6 +363,18 @@
       font-size: 11px;
       color: var(--keio-pink);
       font-weight: bold;
+    }
+
+    .card-choice-btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 2px solid var(--keio-pink);
+      border-radius: 10px;
+      background: #FFF0F5;
+      text-align: left;
+      cursor: pointer;
     }
 
     .history-list {
@@ -481,102 +493,93 @@
   </div>
 
   <script>
-    // ★一元化された完全駅データ（全57駅・明大前重複なし）
     const STATIONS = {
-      // 京王本線 (新宿〜京王八王子)
-      "ST_SHINJUKU": { id: "ST_SHINJUKU", name: "新宿", line: "京王線", code: "KO01", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_SASAZUKA"] },
-      "ST_SASAZUKA": { id: "ST_SASAZUKA", name: "笹塚", line: "京王線", code: "KO02", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_SHINJUKU", "ST_DAITABASHI"] },
-      "ST_DAITABASHI": { id: "ST_DAITABASHI", name: "代田橋", line: "京王線", code: "KO03", stops: ["local"], neighbors: ["ST_SASAZUKA", "ST_MEIDAIMAE"] },
-      // 明大前 (単一化)
-      "ST_MEIDAIMAE": { id: "ST_MEIDAIMAE", name: "明大前", line: "京王線/井の頭線", code: "KO04/IN08", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_DAITABASHI", "ST_SHIMOTAKAIDO", "ST_HIGASHIMATSUBARA", "ST_EIFUKUCHO"] },
-      "ST_SHIMOTAKAIDO": { id: "ST_SHIMOTAKAIDO", name: "下高井戸", line: "京王線", code: "KO05", stops: ["local", "rapid"], neighbors: ["ST_MEIDAIMAE", "ST_SAKURAJOSUI"] },
-      "ST_SAKURAJOSUI": { id: "ST_SAKURAJOSUI", name: "桜上水", line: "京王線", code: "KO06", stops: ["local", "rapid", "express"], neighbors: ["ST_SHIMOTAKAIDO", "ST_KAMIKITA_ZAWA"] },
-      "ST_KAMIKITA_ZAWA": { id: "ST_KAMIKITA_ZAWA", name: "上北沢", line: "京王線", code: "KO07", stops: ["local"], neighbors: ["ST_SAKURAJOSUI", "ST_HACHIMANYAMA"] },
-      "ST_HACHIMANYAMA": { id: "ST_HACHIMANYAMA", name: "八幡山", line: "京王線", code: "KO08", stops: ["local", "rapid"], neighbors: ["ST_KAMIKITA_ZAWA", "ST_ROKAKOEN"] },
-      "ST_ROKAKOEN": { id: "ST_ROKAKOEN", name: "芦花公園", line: "京王線", code: "KO09", stops: ["local"], neighbors: ["ST_HACHIMANYAMA", "ST_CHITOSEKARASUYAMA"] },
-      "ST_CHITOSEKARASUYAMA": { id: "ST_CHITOSEKARASUYAMA", name: "千歳烏山", line: "京王線", code: "KO10", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_ROKAKOEN", "ST_SENGAWA"] },
-      "ST_SENGAWA": { id: "ST_SENGAWA", name: "仙川", line: "京王線", code: "KO11", stops: ["local", "rapid"], neighbors: ["ST_CHITOSEKARASUYAMA", "ST_TSUTSUJIGAOKA"] },
-      "ST_TSUTSUJIGAOKA": { id: "ST_TSUTSUJIGAOKA", name: "つつじヶ丘", line: "京王線", code: "KO12", stops: ["local", "rapid", "express"], neighbors: ["ST_SENGAWA", "ST_SHIBASAKI"] },
-      "ST_SHIBASAKI": { id: "ST_SHIBASAKI", name: "柴崎", line: "京王線", code: "KO13", stops: ["local"], neighbors: ["ST_TSUTSUJIGAOKA", "ST_KOKURYO"] },
-      "ST_KOKURYO": { id: "ST_KOKURYO", name: "国領", line: "京王線", code: "KO14", stops: ["local"], neighbors: ["ST_SHIBASAKI", "ST_FUDA"] },
-      "ST_FUDA": { id: "ST_FUDA", name: "布田", line: "京王線", code: "KO15", stops: ["local"], neighbors: ["ST_KOKURYO", "ST_CHOFU"] },
-      "ST_CHOFU": { id: "ST_CHOFU", name: "調布", line: "京王線", code: "KO16", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_FUDA", "ST_NISHICHOFU", "ST_KEIOTAMAGAWA"] },
-      "ST_NISHICHOFU": { id: "ST_NISHICHOFU", name: "西調布", line: "京王線", code: "KO17", stops: ["local"], neighbors: ["ST_CHOFU", "ST_TOBIDAKYU"] },
-      "ST_TOBIDAKYU": { id: "ST_TOBIDAKYU", name: "飛田給", line: "京王線", code: "KO18", stops: ["local", "rapid"], neighbors: ["ST_NISHICHOFU", "ST_MUSASHINODAI"] },
-      "ST_MUSASHINODAI": { id: "ST_MUSASHINODAI", name: "武蔵野台", line: "京王線", code: "KO19", stops: ["local"], neighbors: ["ST_TOBIDAKYU", "ST_TAMAREIEN"] },
-      "ST_TAMAREIEN": { id: "ST_TAMAREIEN", name: "多磨霊園", line: "京王線", code: "KO20", stops: ["local"], neighbors: ["ST_MUSASHINODAI", "ST_HIGASHIFUCHU"] },
-      "ST_HIGASHIFUCHU": { id: "ST_HIGASHIFUCHU", name: "東府中", line: "京王線", code: "KO21", stops: ["local", "rapid", "express"], neighbors: ["ST_TAMAREIEN", "ST_FUCHU", "ST_FUCHUKEIBA"] },
-      "ST_FUCHU": { id: "ST_FUCHU", name: "府中", line: "京王線", code: "KO22", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_HIGASHIFUCHU", "ST_BUMBAIGAWARA"] },
-      "ST_BUMBAIGAWARA": { id: "ST_BUMBAIGAWARA", name: "分倍河原", line: "京王線", code: "KO23", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_FUCHU", "ST_NAKAGAWARA"] },
-      "ST_NAKAGAWARA": { id: "ST_NAKAGAWARA", name: "中河原", line: "京王線", code: "KO24", stops: ["local"], neighbors: ["ST_BUMBAIGAWARA", "ST_SEISEKISAKURAGAOKA"] },
-      "ST_SEISEKISAKURAGAOKA": { id: "ST_SEISEKISAKURAGAOKA", name: "聖蹟桜ヶ丘", line: "京王線", code: "KO25", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_NAKAGAWARA", "ST_MOGUSAEN"] },
-      "ST_MOGUSAEN": { id: "ST_MOGUSAEN", name: "百草園", line: "京王線", code: "KO26", stops: ["local"], neighbors: ["ST_SEISEKISAKURAGAOKA", "ST_TAKAHATAFUDO"] },
-      "ST_TAKAHATAFUDO": { id: "ST_TAKAHATAFUDO", name: "高幡不動", line: "京王線", code: "KO27", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_MOGUSAEN", "ST_MINAMIDAIRA", "ST_TAMAZOEN"] },
-      "ST_MINAMIDAIRA": { id: "ST_MINAMIDAIRA", name: "南平", line: "京王線", code: "KO28", stops: ["local"], neighbors: ["ST_TAKAHATAFUDO", "ST_HIRAYAMAJOSHI"] },
-      "ST_HIRAYAMAJOSHI": { id: "ST_HIRAYAMAJOSHI", name: "平山城址公園", line: "京王線", code: "KO29", stops: ["local"], neighbors: ["ST_MINAMIDAIRA", "ST_NAGANUMA"] },
-      "ST_NAGANUMA": { id: "ST_NAGANUMA", name: "長沼", line: "京王線", code: "KO30", stops: ["local"], neighbors: ["ST_HIRAYAMAJOSHI", "ST_KITANO"] },
-      "ST_KITANO": { id: "ST_KITANO", name: "北野", line: "京王線", code: "KO31", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_NAGANUMA", "ST_KEIOHACHIOJI", "ST_KEIOKATAKURA"] },
-      "ST_KEIOHACHIOJI": { id: "ST_KEIOHACHIOJI", name: "京王八王子", line: "京王線", code: "KO32", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_KITANO"] },
+      "ST_SHINJUKU": { id: "ST_SHINJUKU", name: "新宿", line: "京王線", code: "KO01", neighbors: ["ST_SASAZUKA"] },
+      "ST_SASAZUKA": { id: "ST_SASAZUKA", name: "笹塚", line: "京王線", code: "KO02", neighbors: ["ST_SHINJUKU", "ST_DAITABASHI"] },
+      "ST_DAITABASHI": { id: "ST_DAITABASHI", name: "代田橋", line: "京王線", code: "KO03", neighbors: ["ST_SASAZUKA", "ST_MEIDAIMAE"] },
+      "ST_MEIDAIMAE": { id: "ST_MEIDAIMAE", name: "明大前", line: "京王線/井の頭線", code: "KO04/IN08", neighbors: ["ST_DAITABASHI", "ST_SHIMOTAKAIDO", "ST_HIGASHIMATSUBARA", "ST_EIFUKUCHO"] },
+      "ST_SHIMOTAKAIDO": { id: "ST_SHIMOTAKAIDO", name: "下高井戸", line: "京王線", code: "KO05", neighbors: ["ST_MEIDAIMAE", "ST_SAKURAJOSUI"] },
+      "ST_SAKURAJOSUI": { id: "ST_SAKURAJOSUI", name: "桜上水", line: "京王線", code: "KO06", neighbors: ["ST_SHIMOTAKAIDO", "ST_KAMIKITA_ZAWA"] },
+      "ST_KAMIKITA_ZAWA": { id: "ST_KAMIKITA_ZAWA", name: "上北沢", line: "京王線", code: "KO07", neighbors: ["ST_SAKURAJOSUI", "ST_HACHIMANYAMA"] },
+      "ST_HACHIMANYAMA": { id: "ST_HACHIMANYAMA", name: "八幡山", line: "京王線", code: "KO08", neighbors: ["ST_KAMIKITA_ZAWA", "ST_ROKAKOEN"] },
+      "ST_ROKAKOEN": { id: "ST_ROKAKOEN", name: "芦花公園", line: "京王線", code: "KO09", neighbors: ["ST_HACHIMANYAMA", "ST_CHITOSEKARASUYAMA"] },
+      "ST_CHITOSEKARASUYAMA": { id: "ST_CHITOSEKARASUYAMA", name: "千歳烏山", line: "京王線", code: "KO10", neighbors: ["ST_ROKAKOEN", "ST_SENGAWA"] },
+      "ST_SENGAWA": { id: "ST_SENGAWA", name: "仙川", line: "京王線", code: "KO11", neighbors: ["ST_CHITOSEKARASUYAMA", "ST_TSUTSUJIGAOKA"] },
+      "ST_TSUTSUJIGAOKA": { id: "ST_TSUTSUJIGAOKA", name: "つつじヶ丘", line: "京王線", code: "KO12", neighbors: ["ST_SENGAWA", "ST_SHIBASAKI"] },
+      "ST_SHIBASAKI": { id: "ST_SHIBASAKI", name: "柴崎", line: "京王線", code: "KO13", neighbors: ["ST_TSUTSUJIGAOKA", "ST_KOKURYO"] },
+      "ST_KOKURYO": { id: "ST_KOKURYO", name: "国領", line: "京王線", code: "KO14", neighbors: ["ST_SHIBASAKI", "ST_FUDA"] },
+      "ST_FUDA": { id: "ST_FUDA", name: "布田", line: "京王線", code: "KO15", neighbors: ["ST_KOKURYO", "ST_CHOFU"] },
+      "ST_CHOFU": { id: "ST_CHOFU", name: "調布", line: "京王線", code: "KO16", neighbors: ["ST_FUDA", "ST_NISHICHOFU", "ST_KEIOTAMAGAWA"] },
+      "ST_NISHICHOFU": { id: "ST_NISHICHOFU", name: "西調布", line: "京王線", code: "KO17", neighbors: ["ST_CHOFU", "ST_TOBIDAKYU"] },
+      "ST_TOBIDAKYU": { id: "ST_TOBIDAKYU", name: "飛田給", line: "京王線", code: "KO18", neighbors: ["ST_NISHICHOFU", "ST_MUSASHINODAI"] },
+      "ST_MUSASHINODAI": { id: "ST_MUSASHINODAI", name: "武蔵野台", line: "京王線", code: "KO19", neighbors: ["ST_TOBIDAKYU", "ST_TAMAREIEN"] },
+      "ST_TAMAREIEN": { id: "ST_TAMAREIEN", name: "多磨霊園", line: "京王線", code: "KO20", neighbors: ["ST_MUSASHINODAI", "ST_HIGASHIFUCHU"] },
+      "ST_HIGASHIFUCHU": { id: "ST_HIGASHIFUCHU", name: "東府中", line: "京王線", code: "KO21", neighbors: ["ST_TAMAREIEN", "ST_FUCHU", "ST_FUCHUKEIBA"] },
+      "ST_FUCHU": { id: "ST_FUCHU", name: "府中", line: "京王線", code: "KO22", neighbors: ["ST_HIGASHIFUCHU", "ST_BUMBAIGAWARA"] },
+      "ST_BUMBAIGAWARA": { id: "ST_BUMBAIGAWARA", name: "分倍河原", line: "京王線", code: "KO23", neighbors: ["ST_FUCHU", "ST_NAKAGAWARA"] },
+      "ST_NAKAGAWARA": { id: "ST_NAKAGAWARA", name: "中河原", line: "京王線", code: "KO24", neighbors: ["ST_BUMBAIGAWARA", "ST_SEISEKISAKURAGAOKA"] },
+      "ST_SEISEKISAKURAGAOKA": { id: "ST_SEISEKISAKURAGAOKA", name: "聖蹟桜ヶ丘", line: "京王線", code: "KO25", neighbors: ["ST_NAKAGAWARA", "ST_MOGUSAEN"] },
+      "ST_MOGUSAEN": { id: "ST_MOGUSAEN", name: "百草園", line: "京王線", code: "KO26", neighbors: ["ST_SEISEKISAKURAGAOKA", "ST_TAKAHATAFUDO"] },
+      "ST_TAKAHATAFUDO": { id: "ST_TAKAHATAFUDO", name: "高幡不動", line: "京王線", code: "KO27", neighbors: ["ST_MOGUSAEN", "ST_MINAMIDAIRA", "ST_TAMAZOEN"] },
+      "ST_MINAMIDAIRA": { id: "ST_MINAMIDAIRA", name: "南平", line: "京王線", code: "KO28", neighbors: ["ST_TAKAHATAFUDO", "ST_HIRAYAMAJOSHI"] },
+      "ST_HIRAYAMAJOSHI": { id: "ST_HIRAYAMAJOSHI", name: "平山城址公園", line: "京王線", code: "KO29", neighbors: ["ST_MINAMIDAIRA", "ST_NAGANUMA"] },
+      "ST_NAGANUMA": { id: "ST_NAGANUMA", name: "長沼", line: "京王線", code: "KO30", neighbors: ["ST_HIRAYAMAJOSHI", "ST_KITANO"] },
+      "ST_KITANO": { id: "ST_KITANO", name: "北野", line: "京王線", code: "KO31", neighbors: ["ST_NAGANUMA", "ST_KEIOHACHIOJI", "ST_KEIOKATAKURA"] },
+      "ST_KEIOHACHIOJI": { id: "ST_KEIOHACHIOJI", name: "京王八王子", line: "京王線", code: "KO32", neighbors: ["ST_KITANO"] },
 
-      // 相模原線
-      "ST_KEIOTAMAGAWA": { id: "ST_KEIOTAMAGAWA", name: "京王多摩川", line: "相模原線", code: "KO34", stops: ["local", "rapid", "express"], neighbors: ["ST_CHOFU", "ST_KEIOINADAZUTSUMI"] },
-      "ST_KEIOINADAZUTSUMI": { id: "ST_KEIOINADAZUTSUMI", name: "京王稲田堤", line: "相模原線", code: "KO35", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_KEIOTAMAGAWA", "ST_KEIOYOMIURILAND"] },
-      "ST_KEIOYOMIURILAND": { id: "ST_KEIOYOMIURILAND", name: "京王読売ランド", line: "相模原線", code: "KO36", stops: ["local"], neighbors: ["ST_KEIOINADAZUTSUMI", "ST_INAGI"] },
-      "ST_INAGI": { id: "ST_INAGI", name: "稲城", line: "相模原線", code: "KO37", stops: ["local"], neighbors: ["ST_KEIOYOMIURILAND", "ST_WAKABADAI"] },
-      "ST_WAKABADAI": { id: "ST_WAKABADAI", name: "若葉台", line: "相模原線", code: "KO38", stops: ["local"], neighbors: ["ST_INAGI", "ST_KEIONAGAYAMA"] },
-      "ST_KEIONAGAYAMA": { id: "ST_KEIONAGAYAMA", name: "京王永山", line: "相模原線", code: "KO39", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_WAKABADAI", "ST_KEIOTAMACENTER"] },
-      "ST_KEIOTAMACENTER": { id: "ST_KEIOTAMACENTER", name: "京王多摩センター", line: "相模原線", code: "KO40", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_KEIONAGAYAMA", "ST_MINAMIOSAWA"] },
-      "ST_MINAMIOSAWA": { id: "ST_MINAMIOSAWA", name: "南大沢", line: "相模原線", code: "KO41", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_KEIOTAMACENTER", "ST_TAMASAKAI"] },
-      "ST_TAMASAKAI": { id: "ST_TAMASAKAI", name: "多摩境", line: "相模原線", code: "KO42", stops: ["local"], neighbors: ["ST_MINAMIOSAWA", "ST_HASHIMOTO"] },
-      "ST_HASHIMOTO": { id: "ST_HASHIMOTO", name: "橋本", line: "相模原線", code: "KO43", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_TAMASAKAI"] },
+      "ST_KEIOTAMAGAWA": { id: "ST_KEIOTAMAGAWA", name: "京王多摩川", line: "相模原線", code: "KO34", neighbors: ["ST_CHOFU", "ST_KEIOINADAZUTSUMI"] },
+      "ST_KEIOINADAZUTSUMI": { id: "ST_KEIOINADAZUTSUMI", name: "京王稲田堤", line: "相模原線", code: "KO35", neighbors: ["ST_KEIOTAMAGAWA", "ST_KEIOYOMIURILAND"] },
+      "ST_KEIOYOMIURILAND": { id: "ST_KEIOYOMIURILAND", name: "京王読売ランド", line: "相模原線", code: "KO36", neighbors: ["ST_KEIOINADAZUTSUMI", "ST_INAGI"] },
+      "ST_INAGI": { id: "ST_INAGI", name: "稲城", line: "相模原線", code: "KO37", neighbors: ["ST_KEIOYOMIURILAND", "ST_WAKABADAI"] },
+      "ST_WAKABADAI": { id: "ST_WAKABADAI", name: "若葉台", line: "相模原線", code: "KO38", neighbors: ["ST_INAGI", "ST_KEIONAGAYAMA"] },
+      "ST_KEIONAGAYAMA": { id: "ST_KEIONAGAYAMA", name: "京王永山", line: "相模原線", code: "KO39", neighbors: ["ST_WAKABADAI", "ST_KEIOTAMACENTER"] },
+      "ST_KEIOTAMACENTER": { id: "ST_KEIOTAMACENTER", name: "京王多摩センター", line: "相模原線", code: "KO40", neighbors: ["ST_KEIONAGAYAMA", "ST_MINAMIOSAWA"] },
+      "ST_MINAMIOSAWA": { id: "ST_MINAMIOSAWA", name: "南大沢", line: "相模原線", code: "KO41", neighbors: ["ST_KEIOTAMACENTER", "ST_TAMASAKAI"] },
+      "ST_TAMASAKAI": { id: "ST_TAMASAKAI", name: "多摩境", line: "相模原線", code: "KO42", neighbors: ["ST_MINAMIOSAWA", "ST_HASHIMOTO"] },
+      "ST_HASHIMOTO": { id: "ST_HASHIMOTO", name: "橋本", line: "相模原線", code: "KO43", neighbors: ["ST_TAMASAKAI"] },
 
-      // 高尾線
-      "ST_KEIOKATAKURA": { id: "ST_KEIOKATAKURA", name: "京王片倉", line: "高尾線", code: "KO48", stops: ["local"], neighbors: ["ST_KITANO", "ST_YAMADA"] },
-      "ST_YAMADA": { id: "ST_YAMADA", name: "山田", line: "高尾線", code: "KO49", stops: ["local"], neighbors: ["ST_KEIOKATAKURA", "ST_MEJIRODAI"] },
-      "ST_MEJIRODAI": { id: "ST_MEJIRODAI", name: "めじろ台", line: "高尾線", code: "KO50", stops: ["local", "express", "limited"], neighbors: ["ST_YAMADA", "ST_HAZAMA"] },
-      "ST_HAZAMA": { id: "ST_HAZAMA", name: "狭間", line: "高尾線", code: "KO51", stops: ["local"], neighbors: ["ST_MEJIRODAI", "ST_TAKAO"] },
-      "ST_TAKAO": { id: "ST_TAKAO", name: "高尾", line: "高尾線", code: "KO52", stops: ["local", "express", "limited"], neighbors: ["ST_HAZAMA", "ST_TAKAOSANGUCHI"] },
-      "ST_TAKAOSANGUCHI": { id: "ST_TAKAOSANGUCHI", name: "高尾山口", line: "高尾線", code: "KO53", stops: ["local", "express", "limited"], neighbors: ["ST_TAKAO"] },
+      "ST_KEIOKATAKURA": { id: "ST_KEIOKATAKURA", name: "京王片倉", line: "高尾線", code: "KO48", neighbors: ["ST_KITANO", "ST_YAMADA"] },
+      "ST_YAMADA": { id: "ST_YAMADA", name: "山田", line: "高尾線", code: "KO49", neighbors: ["ST_KEIOKATAKURA", "ST_MEJIRODAI"] },
+      "ST_MEJIRODAI": { id: "ST_MEJIRODAI", name: "めじろ台", line: "高尾線", code: "KO50", neighbors: ["ST_YAMADA", "ST_HAZAMA"] },
+      "ST_HAZAMA": { id: "ST_HAZAMA", name: "狭間", line: "高尾線", code: "KO51", neighbors: ["ST_MEJIRODAI", "ST_TAKAO"] },
+      "ST_TAKAO": { id: "ST_TAKAO", name: "高尾", line: "高尾線", code: "KO52", neighbors: ["ST_HAZAMA", "ST_TAKAOSANGUCHI"] },
+      "ST_TAKAOSANGUCHI": { id: "ST_TAKAOSANGUCHI", name: "高尾山口", line: "高尾線", code: "KO53", neighbors: ["ST_TAKAO"] },
 
-      // 競馬場線・動物園線（支線）
-      "ST_FUCHUKEIBA": { id: "ST_FUCHUKEIBA", name: "府中競馬正門前", line: "競馬場線", code: "KO22-2", stops: ["local"], neighbors: ["ST_HIGASHIFUCHU"] },
-      "ST_TAMAZOEN": { id: "ST_TAMAZOEN", name: "多摩動物公園", line: "動物園線", code: "KO27-2", stops: ["local"], neighbors: ["ST_TAKAHATAFUDO"] },
+      "ST_FUCHUKEIBA": { id: "ST_FUCHUKEIBA", name: "府中競馬正門前", line: "競馬場線", code: "KO22-2", neighbors: ["ST_HIGASHIFUCHU"] },
+      "ST_TAMAZOEN": { id: "ST_TAMAZOEN", name: "多摩動物公園", line: "動物園線", code: "KO27-2", neighbors: ["ST_TAKAHATAFUDO"] },
 
-      // 井の頭線
-      "ST_SHIBUYA": { id: "ST_SHIBUYA", name: "渋谷", line: "井の頭線", code: "IN01", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_SHINSEN"] },
-      "ST_SHINSEN": { id: "ST_SHINSEN", name: "神泉", line: "井の頭線", code: "IN02", stops: ["local"], neighbors: ["ST_SHIBUYA", "ST_KOMABATODAIMAE"] },
-      "ST_KOMABATODAIMAE": { id: "ST_KOMABATODAIMAE", name: "駒場東大前", line: "井の頭線", code: "IN03", stops: ["local"], neighbors: ["ST_SHINSEN", "ST_IKENOUE"] },
-      "ST_IKENOUE": { id: "ST_IKENOUE", name: "池ノ上", line: "井の頭線", code: "IN04", stops: ["local"], neighbors: ["ST_KOMABATODAIMAE", "ST_SHIMOKITAZAWA"] },
-      "ST_SHIMOKITAZAWA": { id: "ST_SHIMOKITAZAWA", name: "下北沢", line: "井の頭線", code: "IN05", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_IKENOUE", "ST_SHINDAITA"] },
-      "ST_SHINDAITA": { id: "ST_SHINDAITA", name: "新代田", line: "井の頭線", code: "IN06", stops: ["local"], neighbors: ["ST_SHIMOKITAZAWA", "ST_HIGASHIMATSUBARA"] },
-      "ST_HIGASHIMATSUBARA": { id: "ST_HIGASHIMATSUBARA", name: "東松原", line: "井の頭線", code: "IN07", stops: ["local"], neighbors: ["ST_SHINDAITA", "ST_MEIDAIMAE"] },
-      "ST_EIFUKUCHO": { id: "ST_EIFUKUCHO", name: "永福町", line: "井の頭線", code: "IN09", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_MEIDAIMAE", "ST_NISHIEIFUKU"] },
-      "ST_NISHIEIFUKU": { id: "ST_NISHIEIFUKU", name: "西永福", line: "井の頭線", code: "IN10", stops: ["local"], neighbors: ["ST_EIFUKUCHO", "ST_HAMADAYAMA"] },
-      "ST_HAMADAYAMA": { id: "ST_HAMADAYAMA", name: "浜田山", line: "井の頭線", code: "IN11", stops: ["local"], neighbors: ["ST_NISHIEIFUKU", "ST_TAKAIDO"] },
-      "ST_TAKAIDO": { id: "ST_TAKAIDO", name: "高井戸", line: "井の頭線", code: "IN12", stops: ["local"], neighbors: ["ST_HAMADAYAMA", "ST_FUJIMIGAOKA"] },
-      "ST_FUJIMIGAOKA": { id: "ST_FUJIMIGAOKA", name: "富士見ヶ丘", line: "井の頭線", code: "IN13", stops: ["local"], neighbors: ["ST_TAKAIDO", "ST_KUGAYAMA"] },
-      "ST_KUGAYAMA": { id: "ST_KUGAYAMA", name: "久我山", line: "井の頭線", code: "IN14", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_FUJIMIGAOKA", "ST_MITAKADAI"] },
-      "ST_MITAKADAI": { id: "ST_MITAKADAI", name: "三鷹台", line: "井の頭線", code: "IN15", stops: ["local"], neighbors: ["ST_KUGAYAMA", "ST_INOKASHIRAKOEN"] },
-      "ST_INOKASHIRAKOEN": { id: "ST_INOKASHIRAKOEN", name: "井の頭公園", line: "井の頭線", code: "IN16", stops: ["local"], neighbors: ["ST_MITAKADAI", "ST_KICHIJOJI"] },
-      "ST_KICHIJOJI": { id: "ST_KICHIJOJI", name: "吉祥寺", line: "井の頭線", code: "IN17", stops: ["local", "rapid", "express", "limited"], neighbors: ["ST_INOKASHIRAKOEN"] }
+      "ST_SHIBUYA": { id: "ST_SHIBUYA", name: "渋谷", line: "井の頭線", code: "IN01", neighbors: ["ST_SHINSEN"] },
+      "ST_SHINSEN": { id: "ST_SHINSEN", name: "神泉", line: "井の頭線", code: "IN02", neighbors: ["ST_SHIBUYA", "ST_KOMABATODAIMAE"] },
+      "ST_KOMABATODAIMAE": { id: "ST_KOMABATODAIMAE", name: "駒場東大前", line: "井の頭線", code: "IN03", neighbors: ["ST_SHINSEN", "ST_IKENOUE"] },
+      "ST_IKENOUE": { id: "ST_IKENOUE", name: "池ノ上", line: "井の頭線", code: "IN04", neighbors: ["ST_KOMABATODAIMAE", "ST_SHIMOKITAZAWA"] },
+      "ST_SHIMOKITAZAWA": { id: "ST_SHIMOKITAZAWA", name: "下北沢", line: "井の頭線", code: "IN05", neighbors: ["ST_IKENOUE", "ST_SHINDAITA"] },
+      "ST_SHINDAITA": { id: "ST_SHINDAITA", name: "新代田", line: "井の頭線", code: "IN06", neighbors: ["ST_SHIMOKITAZAWA", "ST_HIGASHIMATSUBARA"] },
+      "ST_HIGASHIMATSUBARA": { id: "ST_HIGASHIMATSUBARA", name: "東松原", line: "井の頭線", code: "IN07", neighbors: ["ST_SHINDAITA", "ST_MEIDAIMAE"] },
+      "ST_EIFUKUCHO": { id: "ST_EIFUKUCHO", name: "永福町", line: "井の頭線", code: "IN09", neighbors: ["ST_MEIDAIMAE", "ST_NISHIEIFUKU"] },
+      "ST_NISHIEIFUKU": { id: "ST_NISHIEIFUKU", name: "西永福", line: "井の頭線", code: "IN10", neighbors: ["ST_EIFUKUCHO", "ST_HAMADAYAMA"] },
+      "ST_HAMADAYAMA": { id: "ST_HAMADAYAMA", name: "浜田山", line: "井の頭線", code: "IN11", neighbors: ["ST_NISHIEIFUKU", "ST_TAKAIDO"] },
+      "ST_TAKAIDO": { id: "ST_TAKAIDO", name: "高井戸", line: "井の頭線", code: "IN12", neighbors: ["ST_HAMADAYAMA", "ST_FUJIMIGAOKA"] },
+      "ST_FUJIMIGAOKA": { id: "ST_FUJIMIGAOKA", name: "富士見ヶ丘", line: "井の頭線", code: "IN13", neighbors: ["ST_TAKAIDO", "ST_KUGAYAMA"] },
+      "ST_KUGAYAMA": { id: "ST_KUGAYAMA", name: "久我山", line: "井の頭線", code: "IN14", neighbors: ["ST_FUJIMIGAOKA", "ST_MITAKADAI"] },
+      "ST_MITAKADAI": { id: "ST_MITAKADAI", name: "三鷹台", line: "井の頭線", code: "IN15", neighbors: ["ST_KUGAYAMA", "ST_INOKASHIRAKOEN"] },
+      "ST_INOKASHIRAKOEN": { id: "ST_INOKASHIRAKOEN", name: "井の頭公園", line: "井の頭線", code: "IN16", neighbors: ["ST_MITAKADAI", "ST_KICHIJOJI"] },
+      "ST_KICHIJOJI": { id: "ST_KICHIJOJI", name: "吉祥寺", line: "井の頭線", code: "IN17", neighbors: ["ST_INOKASHIRAKOEN"] }
     };
 
+    // 列車種別カード（特急・急行・快速）を削除した新カード一覧
     const CARD_DEFINITIONS = {
-      "limited": { name: "特急カード", type: "列車", trainType: "limited", desc: "特急が停まる駅だけを数えて進める。" },
-      "express": { name: "急行カード", type: "列車", trainType: "express", desc: "急行が停まる駅だけを数えて進める。" },
-      "rapid": { name: "快速カード", type: "列車", trainType: "rapid", desc: "快速が停まる駅だけを数えて進める。" },
-      "dice2": { name: "2個振りカード", type: "特殊", desc: "サイコロを2個振って合計の目の分進める。" },
-      "dice3": { name: "3個振りカード", type: "特殊", desc: "サイコロを3個振って合計の目の分進める。" },
-      "big_eye": { name: "大目カード(4・5・6)", type: "特殊", desc: "サイコロで必ず【4・5・6】のどれかが出る。" },
-      "small_eye": { name: "小目カード(1・2・3)", type: "特殊", desc: "サイコロで必ず【1・2・3】のどれかが出る。" },
+      "dice2": { name: "2個振りカード", type: "移動", desc: "サイコロを2個振って合計の目の分進める。" },
+      "dice3": { name: "3個振りカード", type: "移動", desc: "サイコロを3個振って合計の目の分進める。" },
+      "big_eye": { name: "大目カード(4・5・6)", type: "移動", desc: "サイコロで必ず【4・5・6】のどれかが出る。" },
+      "small_eye": { name: "小目カード(1・2・3)", type: "移動", desc: "サイコロで必ず【1・2・3】のどれかが出る。" },
+      "choose_dice2": { name: "サイコロ2個から選べる", type: "移動", desc: "サイコロを2個振り、出た目のどちらか好きな歩数を選べる。" },
+      "choose_dice3": { name: "サイコロ3個から選べる", type: "移動", desc: "サイコロを3個振り、出た目のどれか好きな歩数を選べる。" },
       "special": { name: "スペシャルカード", type: "特殊", desc: "1〜6マス進んだ時に行ける駅一覧から自由に行き先を選べる。" },
       "change_target": { name: "目的地変更カード", type: "特殊", desc: "目的地を別のランダムな駅に再設定する。" },
       "jump_near": { name: "目的地近くにジャンプ", type: "特殊", desc: "目的地のすぐ手前の駅へワープする。" },
       "warp_any": { name: "どこでもワープカード", type: "特殊", desc: "全57駅からランダムな1駅へ一気にワープする。" },
       "trade_card": { name: "カード交換カード", type: "特殊", desc: "手持ちカードを3枚廃棄し、新しく1枚カードを引く。" },
-      "jump_target": { name: "目的地にジャンプ", type: "特殊", desc: "目的地へ一気にワープして即ゴール（クリア）する。" },
-      "choose_dice2": { name: "サイコロ2個から選べる", type: "特殊", desc: "サイコロを2個振り、出た目のどちらか好きな歩数を選べる。" },
-      "choose_dice3": { name: "サイコロ3個から選べる", type: "特殊", desc: "サイコロを3個振り、出た目のどれか好きな歩数を選べる。" }
+      "jump_target": { name: "目的地にジャンプ", type: "特殊", desc: "目的地へ一気にワープして即ゴール（クリア）する。" }
     };
 
     let currentStation = STATIONS["ST_KEIOTAMAGAWA"];
@@ -661,7 +664,7 @@
       updateDashboardUI();
       document.getElementById("main-btn").addEventListener("click", () => {
         if (gameState === "SET_TARGET") spinTargetSlot();
-        else if (gameState === "ROLL_DICE") rollDice("local", 1);
+        else if (gameState === "ROLL_DICE") rollDice(1);
       });
       renderCards();
     });
@@ -676,7 +679,6 @@
       }
     }
 
-    // ★幅優先探索による正確な最短駅数計算（完全なグラフ構造）
     function getShortestDistance(startId, targetId) {
       if (!startId || !targetId || startId === targetId) return 0;
 
@@ -800,6 +802,8 @@
 
       updateDashboardUI();
       renderCards();
+      
+      showTargetConfirmedModal();
     }
 
     function spinTargetSlot() {
@@ -809,17 +813,31 @@
       btn.disabled = true;
       manualBtn.style.display = "none";
       selectCard.style.display = "none";
+
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+
+      title.innerText = "🎰 目的地を抽選中...";
+      content.innerHTML = `
+        <div class="event-icon">🎰</div>
+        <div id="slot-station-name" style="font-size:24px; font-weight:900; color:var(--keio-pink); margin:12px 0;">ルーレット回転中...</div>
+        <div id="slot-line-name" style="font-size:12px; color:#666;">---</div>
+      `;
+      modal.classList.remove("hidden");
+
       let count = 0;
       const keys = Object.keys(STATIONS);
 
       const interval = setInterval(() => {
         const randKey = keys[Math.floor(Math.random() * keys.length)];
         const randSt = STATIONS[randKey];
-        document.getElementById("target-line").innerText = `(${randSt.line})`;
-        document.getElementById("target-name").innerText = randSt.name;
+        
+        document.getElementById("slot-station-name").innerText = `${randSt.name}駅`;
+        document.getElementById("slot-line-name").innerText = `(${randSt.line})`;
         count++;
 
-        if (count > 20) {
+        if (count > 22) {
           clearInterval(interval);
           do {
             const finalKey = keys[Math.floor(Math.random() * keys.length)];
@@ -835,15 +853,36 @@
           btn.disabled = false;
           updateDashboardUI();
           renderCards();
+
+          showTargetConfirmedModal();
         }
-      }, 60);
+      }, 70);
     }
 
-    function getValidStepsForTrain(trainType, maxStepsAllowed = [1, 2, 3, 4, 5, 6]) {
+    function showTargetConfirmedModal() {
+      const modal = document.getElementById("game-modal");
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+      const remDist = getShortestDistance(currentStation.id, targetStation.id);
+
+      title.innerText = "🎯 目的地が決定しました！";
+      content.innerHTML = `
+        <div class="event-icon">📍</div>
+        <div class="event-msg">
+          目的地：<b style="color:var(--keio-pink); font-size:22px;">【${targetStation.name}駅】</b><br>
+          <span style="font-size:12px; color:#555;">(${targetStation.line})</span><br><br>
+          現在地から残り <b style="color:var(--keio-pink); font-size:18px;">${remDist}</b> マスです！
+        </div>
+        <button class="btn" onclick="closeModal()">出発する！</button>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function getValidStepsForTrain(maxStepsAllowed = [1, 2, 3, 4, 5, 6]) {
       const validSteps = [];
       maxStepsAllowed.forEach(step => {
         const testResults = [];
-        searchDestinations(currentStation.id, null, step, trainType, testResults);
+        searchDestinations(currentStation.id, null, step, testResults);
         if (testResults.length > 0) {
           validSteps.push(step);
         }
@@ -851,7 +890,6 @@
       return validSteps;
     }
 
-    // ★ 1〜6マスの時の50%ピッタリ出目獲得ロジック
     function getSingleDiceValue(validSteps) {
       if (!targetStation) {
         return validSteps[Math.floor(Math.random() * validSteps.length)];
@@ -868,15 +906,15 @@
       return validSteps[Math.floor(Math.random() * validSteps.length)];
     }
 
-    function rollDice(trainType = "local", diceCount = 1, allowedEyes = null) {
+    function rollDice(diceCount = 1, allowedEyes = null) {
       const btn = document.getElementById("main-btn");
       btn.disabled = true;
 
       let baseAllowed = allowedEyes ? allowedEyes : [1, 2, 3, 4, 5, 6];
-      let validSteps = getValidStepsForTrain(trainType, baseAllowed);
+      let validSteps = getValidStepsForTrain(baseAllowed);
 
       if (validSteps.length === 0) {
-        showPopupNotice("移動不可", "現在地からその列車種別で進める駅が周囲にありません。");
+        showPopupNotice("移動不可", "現在地から進める駅が周囲にありません。");
         btn.disabled = false;
         return;
       }
@@ -901,7 +939,7 @@
           saveGameState();
 
           setTimeout(() => {
-            showMoveOptions(total, trainType, diceCount);
+            showMoveOptions(total, diceCount);
           }, 500);
         }
       }, 70);
@@ -911,7 +949,7 @@
       const btn = document.getElementById("main-btn");
       btn.disabled = true;
 
-      let validSteps = getValidStepsForTrain("local", [1, 2, 3, 4, 5, 6]);
+      let validSteps = getValidStepsForTrain([1, 2, 3, 4, 5, 6]);
 
       if (validSteps.length === 0) {
         showPopupNotice("移動不可", "現在地から進める駅がありません。");
@@ -960,7 +998,7 @@
         btn.innerText = `🎲 【 ${val} マス 】進む`;
         btn.onclick = () => {
           document.getElementById("dice-num").innerText = val;
-          showMoveOptions(val, "local", 1);
+          showMoveOptions(val, 1);
         };
         content.appendChild(btn);
       });
@@ -968,9 +1006,9 @@
       modal.classList.remove("hidden");
     }
 
-    function showMoveOptions(steps, trainType, diceCount = 1) {
+    function showMoveOptions(steps, diceCount = 1) {
       const results = [];
-      searchDestinations(currentStation.id, null, steps, trainType, results);
+      searchDestinations(currentStation.id, null, steps, results);
 
       const modal = document.getElementById("game-modal");
       const modalContent = document.getElementById("modal-content");
@@ -1008,8 +1046,7 @@
       modal.classList.remove("hidden");
     }
 
-    // ★完全なグラフ構造でのルート・方向探索
-    function searchDestinations(currId, fromId, remainingSteps, trainType, results) {
+    function searchDestinations(currId, fromId, remainingSteps, results) {
       const currSt = STATIONS[currId];
 
       if (remainingSteps === 0) {
@@ -1019,13 +1056,7 @@
 
       currSt.neighbors.forEach(nid => {
         if (nid === fromId) return;
-
-        const nextSt = STATIONS[nid];
-        const isStop = (trainType === "local") || nextSt.stops.includes(trainType);
-
-        if (isStop) {
-          searchDestinations(nid, currId, remainingSteps - 1, trainType, results);
-        }
+        searchDestinations(nid, currId, remainingSteps - 1, results);
       });
     }
 
@@ -1074,7 +1105,7 @@
 
       for (let steps = 1; steps <= 6; steps++) {
         const results = [];
-        searchDestinations(currentStation.id, null, steps, "local", results);
+        searchDestinations(currentStation.id, null, steps, results);
 
         results.forEach(res => {
           if (!allCandidates.some(c => c.station.id === res.station.id)) {
@@ -1154,40 +1185,49 @@
       const title = document.getElementById("modal-title");
       const content = document.getElementById("modal-content");
 
-      title.innerText = `移動完了 (現在地: ${currentStation.name})`;
+      title.innerText = `駅に到着！ (${currentStation.name})`;
 
-      const getCardSuccess = Math.random() < 0.5;
-
-      if (getCardSuccess) {
-        const cardKeys = Object.keys(CARD_DEFINITIONS);
-        const drawnKey = cardKeys[Math.floor(Math.random() * cardKeys.length)];
-        const cardDef = CARD_DEFINITIONS[drawnKey];
-
-        inventory.push({ id: Date.now(), key: drawnKey, ...cardDef });
-
-        content.innerHTML = `
-          <div class="event-icon">🎴</div>
-          <div class="event-msg">
-            <b>${prevStName}駅</b> から <b>${currentStation.name}駅 (${currentStation.line})</b> へ移動完了！<br><br>
-            🎁 カードGET: <b style="color:#002A86; font-size:16px;">「${cardDef.name}」</b><br>
-            <span style="font-size:11px; color:#555;">${cardDef.desc}</span>
-          </div>
-          <button class="btn" onclick="closeModal()">OK</button>
-        `;
-        log(`【${currentStation.name}駅】移動完了 ➔ カード「${cardDef.name}」を入手！`);
-      } else {
-        content.innerHTML = `
-          <div class="event-icon">🚃</div>
-          <div class="event-msg">
-            <b>${prevStName}駅</b> から <b>${currentStation.name}駅 (${currentStation.line})</b> へ移動完了！<br><br>
-            <span style="color:#666;">（カードは獲得できませんでした）</span>
-          </div>
-          <button class="btn" onclick="closeModal()">OK</button>
-        `;
-        log(`【${currentStation.name}駅】移動完了`);
+      const cardKeys = Object.keys(CARD_DEFINITIONS);
+      
+      const candidateKeys = [];
+      while (candidateKeys.length < 3) {
+        const k = cardKeys[Math.floor(Math.random() * cardKeys.length)];
+        if (!candidateKeys.includes(k)) {
+          candidateKeys.push(k);
+        }
       }
 
+      let optionsHtml = "";
+      candidateKeys.forEach(k => {
+        const cardDef = CARD_DEFINITIONS[k];
+        optionsHtml += `
+          <button class="card-choice-btn" onclick="chooseCardFromArrival('${k}')">
+            <span class="card-type type-${cardDef.type}">${cardDef.type}</span>
+            <b style="font-size:13px; margin-left:4px; color:#111;">${cardDef.name}</b>
+            <div style="font-size:10px; color:#555; margin-top:2px;">${cardDef.desc}</div>
+          </button>
+        `;
+      });
+
+      content.innerHTML = `
+        <div class="event-icon">🎁</div>
+        <div class="event-msg" style="margin-bottom:8px;">
+          <b>${prevStName}駅</b> ➔ <b>${currentStation.name}駅</b> 到着！<br>
+          カードを1枚選んで獲得できます！
+        </div>
+        ${optionsHtml}
+        <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">カードを入手しない</button>
+      `;
+
       modal.classList.remove("hidden");
+    }
+
+    function chooseCardFromArrival(cardKey) {
+      const cardDef = CARD_DEFINITIONS[cardKey];
+      inventory.push({ id: Date.now(), key: cardKey, ...cardDef });
+      
+      log(`【${currentStation.name}駅】カード「${cardDef.name}」を選択してGET！`);
+      closeModal();
     }
 
     function resetNextRound() {
@@ -1221,13 +1261,7 @@
         let isUsable = gameState === "ROLL_DICE";
         let statusText = "使う";
 
-        if (card.type === "列車") {
-          let canStop = currentStation.stops.includes(card.trainType);
-          if (!canStop) {
-            isUsable = false;
-            statusText = "通過駅";
-          }
-        } else if (card.key === "trade_card" && inventory.length < 4) {
+        if (card.key === "trade_card" && inventory.length < 4) {
           isUsable = false;
           statusText = "枚数不足";
         }
@@ -1293,19 +1327,16 @@
         rollChooseDice(3);
       } else if (card.key === "dice2") {
         addHistory("card", `🎴 カード使用: 【2個振りカード】`);
-        rollDice("local", 2);
+        rollDice(2);
       } else if (card.key === "dice3") {
         addHistory("card", `🎴 カード使用: 【3個振りカード】`);
-        rollDice("local", 3);
+        rollDice(3);
       } else if (card.key === "big_eye") {
         addHistory("card", `🎴 カード使用: 【大目カード】`);
-        rollDice("local", 1, [4, 5, 6]);
+        rollDice(1, [4, 5, 6]);
       } else if (card.key === "small_eye") {
         addHistory("card", `🎴 カード使用: 【小目カード】`);
-        rollDice("local", 1, [1, 2, 3]);
-      } else if (card.trainType) {
-        addHistory("card", `🎴 カード使用: 【${card.name}】`);
-        rollDice(card.trainType, 1);
+        rollDice(1, [1, 2, 3]);
       }
     }
 
@@ -1394,8 +1425,10 @@
         historyHtml += '</div>';
 
         content.innerHTML = `
-          <div style="font-size:12px; font-weight:bold; margin-bottom:8px; color:#555;">これまでの移動・カード使用ログ:</div>
-          ${historyHtml}
+          <div class="history-list-container">
+            <div style="font-size:12px; font-weight:bold; margin-bottom:8px; color:#555;">これまでの移動・カード使用ログ:</div>
+            ${historyHtml}
+          </div>
           <button class="btn" onclick="closeModal()">閉じる</button>
         `;
       }
