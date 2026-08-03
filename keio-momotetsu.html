@@ -718,6 +718,7 @@
         document.getElementById("distance-bar").innerHTML = `目的地を決めます。「スロットで決める」または「自分で選ぶ」を押してください`;
         changeBtn.style.display = "none";
       }
+      renderCards();
       saveGameState();
     }
 
@@ -757,7 +758,6 @@
       currentStation = STATIONS[select.value];
       log(`現在地を【${currentStation.name}（${currentStation.line}）】に変更。`);
       updateDashboardUI();
-      renderCards();
     }
 
     function openManualTargetPicker() {
@@ -800,8 +800,6 @@
       document.getElementById("start-select-container").style.display = "none";
 
       updateDashboardUI();
-      renderCards();
-      
       showTargetConfirmedModal();
     }
 
@@ -851,8 +849,6 @@
           btn.innerText = "サイコロを振る";
           btn.disabled = false;
           updateDashboardUI();
-          renderCards();
-
           showTargetConfirmedModal();
         }
       }, 70);
@@ -1161,7 +1157,6 @@
       }
     }
 
-    // ★ 目的地（ゴール）到着時：豪華な「3枚から1枚選べる報酬」ポップアップ
     function showArrivalCheckPopup() {
       const modal = document.getElementById("game-modal");
       const title = document.getElementById("modal-title");
@@ -1204,7 +1199,6 @@
       modal.classList.remove("hidden");
     }
 
-    // ★ 途中駅到着時：50%の確率でランダムカード1枚GET（今まで通り）
     function triggerStationEvent(prevStName) {
       const modal = document.getElementById("game-modal");
       const title = document.getElementById("modal-title");
@@ -1273,19 +1267,24 @@
       renderCards();
     }
 
+    // ★ 目的地未決定時はカード使用ボタンを完全に無効化（グレーアウト）する保護処理
     function renderCards() {
       const container = document.getElementById("card-container");
       document.getElementById("card-count").innerText = `${inventory.length}枚`;
       container.innerHTML = "";
 
+      const canUseCards = (gameState === "ROLL_DICE" && targetStation !== null);
+
       inventory.forEach((card, index) => {
         const item = document.createElement("div");
         item.className = "card-item";
 
-        let isUsable = gameState === "ROLL_DICE";
+        let isUsable = canUseCards;
         let statusText = "使う";
 
-        if (card.key === "trade_card" && inventory.length < 4) {
+        if (!canUseCards) {
+          statusText = "目的地未定";
+        } else if (card.key === "trade_card" && inventory.length < 4) {
           isUsable = false;
           statusText = "枚数不足";
         }
@@ -1304,6 +1303,11 @@
     }
 
     function useCard(index) {
+      if (gameState !== "ROLL_DICE" || !targetStation) {
+        showPopupNotice("使用不可", "目的地が決定するまではカードを使用できません。");
+        return;
+      }
+
       const card = inventory[index];
       log(`🎴 カード【${card.name}】を使用！`);
       
@@ -1406,7 +1410,6 @@
       document.getElementById("start-station-select").value = currentStation.id;
       log(`ワープ完了: 【${currentStation.name}駅】へ移動。`);
       updateDashboardUI();
-      renderCards();
       document.getElementById("main-btn").disabled = false;
     }
 
