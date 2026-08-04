@@ -576,7 +576,7 @@
       "special": { name: "スペシャルカード", type: "特殊", desc: "1〜6マス進んだ時に行ける駅一覧から自由に行き先を選べる。" },
       "change_target": { name: "目的地変更カード", type: "特殊", desc: "目的地を別のランダムな駅に再設定する。" },
       "jump_near": { name: "目的地近くにジャンプ", type: "特殊", desc: "目的地のすぐ手前の駅へワープする。" },
-      "warp_any": { name: "どこでもワープカード", type: "特殊", desc: "全57駅からランダムな1駅へ一気にワープする。" },
+      "warp_any": { name: "どこでもワープカード", type: "特殊", desc: "全65駅からランダムな1駅へ一気にワープする。" },
       "trade_card": { name: "カード交換カード", type: "特殊", desc: "手持ちカードを3枚廃棄し、新しく1枚カードを引く。" },
       "jump_target": { name: "目的地にジャンプ", type: "特殊", desc: "目的地へ一気にワープして即ゴール（クリア）する。" }
     };
@@ -668,14 +668,10 @@
       renderCards();
     });
 
+    // ★ モーダル背景誤タップ防止（重要な画面表示中は誤動作を防ぐため画面を閉じない）
     function onModalOverlayClick(e) {
-      if (movingTargetStation) return;
-
-      const modal = document.getElementById("game-modal");
-      modal.classList.add("hidden");
-      if (gameState === "ROLL_DICE") {
-        document.getElementById("main-btn").disabled = false;
-      }
+      // 安全のため、背景タップによるモーダル閉じ処理はすべて無効化します。
+      return;
     }
 
     function getShortestDistance(startId, targetId) {
@@ -1267,7 +1263,6 @@
       renderCards();
     }
 
-    // ★ 目的地未決定時はカード使用ボタンを完全に無効化（グレーアウト）する保護処理
     function renderCards() {
       const container = document.getElementById("card-container");
       document.getElementById("card-count").innerText = `${inventory.length}枚`;
