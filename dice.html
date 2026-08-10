@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>100を目指せ！計算ゲーム</title>
+  
+  <!-- Web App 設定（iOSホーム画面追加用） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="100計算">
+  
+  <style>
+    :root {
+      --bg-color: #f0f4f8;
+      --card-bg: #ffffff;
+      --p1-color: #ff6b6b;
+      --p1-light: #ffe3e3;
+      --p2-color: #4ecdc4;
+      --p2-light: #e0f7f5;
+      --text-color: #2d3748;
+      --gray-light: #edf2f7;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 100vh;
+      padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px;
+      overflow: hidden;
+    }
+
+    header {
+      text-align: center;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #2b6cb0;
+      margin-bottom: 4px;
+    }
+
+    .mode-select {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .mode-btn {
+      padding: 4px 12px;
+      font-size: 0.8rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 12px;
+      background: white;
+      color: #4a5568;
+    }
+
+    .mode-btn.active {
+      background: #3182ce;
+      color: white;
+      border-color: #3182ce;
+      font-weight: bold;
+    }
+
+    /* ゲームボード */
+    .board-container {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      max-width: 360px;
+      justify-content: center;
+      margin: 10px 0;
+    }
+
+    .player-column {
+      flex: 1;
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 3px solid transparent;
+      transition: border-color 0.3s;
+    }
+
+    .player-column.active-p1 { border-color: var(--p1-color); }
+    .player-column.active-p2 { border-color: var(--p2-color); }
+
+    .player-name {
+      font-size: 0.95rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .p1-title { color: var(--p1-color); }
+    .p2-title { color: var(--p2-color); }
+
+    .grid {
+      display: flex;
+      flex-direction: column-reverse; /* 下から上に重ねる */
+      gap: 6px;
+      width: 100%;
+    }
+
+    .cell {
+      height: 44px;
+      border-radius: 8px;
+      background: var(--gray-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #a0aec0;
+      transition: all 0.3s;
+    }
+
+    .cell.filled-p1 {
+      background: var(--p1-light);
+      color: var(--p1-color);
+    }
+
+    .cell.filled-p2 {
+      background: var(--p2-light);
+      color: var(--p2-color);
+    }
+
+    .cell.bust {
+      background: #fed7d7;
+      color: #e53e3e;
+    }
+
+    /* コントロールエリア */
+    .controls {
+      width: 100%;
+      max-width: 360px;
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .status-text {
+      font-size: 0.9rem;
+      font-weight: bold;
+      height: 20px;
+    }
+
+    .dice-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dice {
+      width: 54px;
+      height: 54px;
+      background: white;
+      border: 3px solid var(--text-color);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      box-shadow: 0 4px 0 var(--text-color);
+    }
+
+    .dice.rolling {
+      animation: shake 0.4s infinite;
+    }
+
+    @keyframes shake {
+      0% { transform: rotate(0deg); }
+      25% { transform: rotate(10deg); }
+      75% { transform: rotate(-10deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .btn-roll {
+      background: #3182ce;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 0 #2b6cb0;
+      cursor: pointer;
+    }
+
+    .btn-roll:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #2b6cb0;
+    }
+
+    .btn-roll:disabled {
+      background: #cbd5e0;
+      box-shadow: 0 4px 0 #a0aec0;
+      opacity: 0.6;
+    }
+
+    .choice-buttons {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .btn-choice {
+      flex: 1;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      border: 2px solid #cbd5e0;
+      border-radius: 12px;
+      background: white;
+      color: var(--text-color);
+    }
+
+    .btn-choice:not(:disabled):active {
+      background: #edf2f7;
+    }
+
+    .btn-choice:disabled {
+      opacity: 0.3;
+      border-color: #e2e8f0;
+    }
+
+    /* モーダル */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 300px;
+      width: 80%;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    }
+
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .modal-desc {
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+      color: #4a5568;
+    }
+
+    .btn-reset {
+      background: #48bb78;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 0 #38a169;
+      width: 100%;
+    }
+
+    .btn-reset:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #38a169;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🎯 100を目指せ！計算ゲーム</h1>
+    <div class="mode-select">
+      <button class="mode-btn active" id="modePvp" onclick="setMode('pvp')">2人対戦</button>
+      <button class="mode-btn" id="modeCpu" onclick="setMode('cpu')">VS CPU</button>
+    </div>
+  </header>
+
+  <div class="board-container">
+    <!-- プレイヤー1 -->
+    <div class="player-column active-p1" id="colP1">
+      <div class="player-name p1-title" id="nameP1">プレイヤー1</div>
+      <div class="grid" id="gridP1"></div>
+    </div>
+
+    <!-- プレイヤー2 / CPU -->
+    <div class="player-column" id="colP2">
+      <div class="player-name p2-title" id="nameP2">プレイヤー2</div>
+      <div class="grid" id="gridP2"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="status-text" id="statusText">プレイヤー1の番です</div>
+    
+    <div class="dice-area">
+      <div class="dice" id="diceDisplay">?</div>
+      <button class="btn-roll" id="btnRoll" onclick="rollDice()">サイコロを振る</button>
+    </div>
+
+    <div class="choice-buttons">
+      <button class="btn-choice" id="btn1x" disabled onclick="makeChoice(1)">そのまま足す</button>
+      <button class="btn-choice" id="btn10x" disabled onclick="makeChoice(10)">10倍にして足す</button>
+    </div>
+  </div>
+
+  <!-- 結果表示モーダル -->
+  <div class="modal-overlay" id="resultModal">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">勝者判定！</div>
+      <div class="modal-desc" id="modalDesc">メッセージ</div>
+      <button class="btn-reset" onclick="resetGame()">もう一度あそぶ</button>
+    </div>
+  </div>
+
+  <script>
+    const MAX_ROUNDS = 5;
+    let gameMode = 'pvp'; // 'pvp' or 'cpu'
+    let currentPlayer = 1; // 1 or 2
+    let currentDiceValue = 0;
+    
+    let p1History = [];
+    let p2History = [];
+
+    // 初期化処理
+    function init() {
+      createGrids();
+      resetGame();
+    }
+
+    function createGrids() {
+      const g1 = document.getElementById('gridP1');
+      const g2 = document.getElementById('gridP2');
+      g1.innerHTML = '';
+      g2.innerHTML = '';
+
+      for (let i = 0; i < MAX_ROUNDS; i++) {
+        const cell1 = document.createElement('div');
+        cell1.className = 'cell';
+        cell1.id = `p1-cell-${i}`;
+        g1.appendChild(cell1);
+
+        const cell2 = document.createElement('div');
+        cell2.className = 'cell';
+        cell2.id = `p2-cell-${i}`;
+        g2.appendChild(cell2);
+      }
+    }
+
+    function setMode(mode) {
+      gameMode = mode;
+      document.getElementById('modePvp').classList.toggle('active', mode === 'pvp');
+      document.getElementById('modeCpu').classList.toggle('active', mode === 'cpu');
+      document.getElementById('nameP2').textContent = mode === 'cpu' ? 'CPU' : 'プレイヤー2';
+      resetGame();
+    }
+
+    function resetGame() {
+      p1History = [];
+      p2History = [];
+      currentPlayer = 1;
+      currentDiceValue = 0;
+
+      document.getElementById('diceDisplay').textContent = '?';
+      document.getElementById('resultModal').classList.remove('active');
+      
+      for (let i = 0; i < MAX_ROUNDS; i++) {
+        const c1 = document.getElementById(`p1-cell-${i}`);
+        const c2 = document.getElementById(`p2-cell-${i}`);
+        c1.textContent = '';
+        c1.className = 'cell';
+        c2.textContent = '';
+        c2.className = 'cell';
+      }
+
+      updateUI();
+    }
+
+    function updateUI() {
+      // ハイライト切り替え
+      const col1 = document.getElementById('colP1');
+      const col2 = document.getElementById('colP2');
+      col1.className = `player-column ${currentPlayer === 1 ? 'active-p1' : ''}`;
+      col2.className = `player-column ${currentPlayer === 2 ? 'active-p2' : ''}`;
+
+      // ステータステキスト
+      const pName = currentPlayer === 1 ? 'プレイヤー1' : (gameMode === 'cpu' ? 'CPU' : 'プレイヤー2');
+      document.getElementById('statusText').textContent = `${pName} のターンです`;
+
+      // ボタン制御
+      document.getElementById('btnRoll').disabled = false;
+      document.getElementById('btn1x').disabled = true;
+      document.getElementById('btn10x').disabled = true;
+
+      // CPUの自動プレイ
+      if (currentPlayer === 2 && gameMode === 'cpu') {
+        document.getElementById('btnRoll').disabled = true;
+        setTimeout(cpuPlay, 800);
+      }
+    }
+
+    function rollDice() {
+      const diceEl = document.getElementById('diceDisplay');
+      const btnRoll = document.getElementById('btnRoll');
+      
+      btnRoll.disabled = true;
+      diceEl.classList.add('rolling');
+
+      setTimeout(() => {
+        diceEl.classList.remove('rolling');
+        currentDiceValue = Math.floor(Math.random() * 6) + 1;
+        diceEl.textContent = currentDiceValue;
+
+        // 選択肢ボタンを準備
+        setupChoiceButtons();
+      }, 500);
+    }
+
+    function setupChoiceButtons() {
+      const currentScore = getCurrentScore(currentPlayer);
+      const val1 = currentScore + currentDiceValue;
+      const val10 = currentScore + (currentDiceValue * 10);
+
+      const btn1 = document.getElementById('btn1x');
+      const btn10 = document.getElementById('btn10x');
+
+      btn1.textContent = `+${currentDiceValue} (${val1})`;
+      btn10.textContent = `+${currentDiceValue * 10} (${val10})`;
+
+      btn1.disabled = false;
+      btn10.disabled = false;
+    }
+
+    function getCurrentScore(player) {
+      const history = player === 1 ? p1History : p2History;
+      return history.length > 0 ? history[history.length - 1] : 0;
+    }
+
+    function makeChoice(multiplier) {
+      const addedValue = currentDiceValue * multiplier;
+      const prevScore = getCurrentScore(currentPlayer);
+      const newScore = prevScore + addedValue;
+
+      const history = currentPlayer === 1 ? p1History : p2History;
+      history.push(newScore);
+
+      // マス目を更新
+      const index = history.length - 1;
+      const cell = document.getElementById(`p${currentPlayer}-cell-${index}`);
+      cell.textContent = newScore;
+      cell.classList.add(currentPlayer === 1 ? 'filled-p1' : 'filled-p2');
+
+      if (newScore > 100) {
+        cell.classList.add('bust');
+      }
+
+      // ターン交替または終了判定
+      if (p1History.length === MAX_ROUNDS && p2History.length === MAX_ROUNDS) {
+        endGame();
+      } else {
+        // ターン切り替え
+        currentPlayer = currentPlayer === 1 ? 2 : 1;
+        // 先に全ラウンド終わったプレイヤーをスキップ
+        if (currentPlayer === 1 && p1History.length === MAX_ROUNDS) currentPlayer = 2;
+        if (currentPlayer === 2 && p2History.length === MAX_ROUNDS) currentPlayer = 1;
+
+        document.getElementById('diceDisplay').textContent = '?';
+        updateUI();
+      }
+    }
+
+    // CPUの思考ルーチン
+    function cpuPlay() {
+      rollDice();
+      setTimeout(() => {
+        const currentScore = getCurrentScore(2);
+        const val1 = currentScore + currentDiceValue;
+        const val10 = currentScore + (currentDiceValue * 10);
+
+        let choice = 1;
+        // 10倍にしても100を超えないなら積極的に10倍を選ぶ（簡易AI）
+        if (val10 <= 100) {
+          choice = 10;
+        } else if (val1 > 100) {
+          choice = 1; // どちらもオーバーなら小さい方を選択
+        }
+
+        makeChoice(choice);
+      }, 1000);
+    }
+
+    function endGame() {
+      const s1 = p1History[p1History.length - 1];
+      const s2 = p2History[p2History.length - 1];
+
+      const p1Valid = s1 <= 100;
+      const p2Valid = s2 <= 100;
+
+      let title = "";
+      let desc = "";
+
+      const p2Name = gameMode === 'cpu' ? 'CPU' : 'プレイヤー2';
+
+      if (!p1Valid && !p2Valid) {
+        title = "引き分け！";
+        desc = "ふたりとも100を超えてバーストしてしまいました！";
+      } else if (p1Valid && !p2Valid) {
+        title = "プレイヤー1の勝ち！🏆";
+        desc = `${p2Name}が100を超えたため、プレイヤー1の勝利です！`;
+      } else if (!p1Valid && p2Valid) {
+        title = `${p2Name}の勝ち！🏆`;
+        desc = `プレイヤー1が100を超えたため、${p2Name}の勝利です！`;
+      } else {
+        // 両者100以下
+        if (s1 > s2) {
+          title = "プレイヤー1の勝ち！🏆";
+          desc = `P1: ${s1}pt / ${p2Name}: ${s2}pt で、100に近いプレイヤー1の勝利！`;
+        } else if (s2 > s1) {
+          title = `${p2Name}の勝ち！🏆`;
+          desc = `P1: ${s1}pt / ${p2Name}: ${s2}pt で、100に近い${p2Name}の勝利！`;
+        } else {
+          title = "引き分け！";
+          desc = `ふたりとも ${s1}pt で同点でした！`;
+        }
+      }
+
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalDesc').textContent = desc;
+      document.getElementById('resultModal').classList.add('active');
+    }
+
+    // 起動
+    window.onload = init;
+  </script>
+</body>
+</html>
