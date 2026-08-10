@@ -221,7 +221,7 @@
 
   <div class="status-bar">
     <div class="p-indicator p1 active" id="indP1">ピンク (上下)</div>
-    <div id="statusText">配置する場所を選択</div>
+    <div id="statusText">スライドで狙い、指を離して配置</div>
     <div class="p-indicator p2" id="indP2">青 (左右)</div>
   </div>
 
@@ -266,6 +266,7 @@
     let currentPlayer = P1;
     let currentTile = null;
     let hoverPos = null;
+    let isDragging = false;
     let consecutivePasses = 0;
 
     const canvas = document.getElementById('boardCanvas');
@@ -277,9 +278,10 @@
       setupCanvas();
       resetGame();
 
-      canvas.addEventListener('pointermove', handlePointerMove);
       canvas.addEventListener('pointerdown', handlePointerDown);
-      canvas.addEventListener('pointerleave', () => { hoverPos = null; draw(); });
+      canvas.addEventListener('pointermove', handlePointerMove);
+      canvas.addEventListener('pointerup', handlePointerUp);
+      canvas.addEventListener('pointercancel', handlePointerCancel);
 
       window.addEventListener('resize', () => {
         setupCanvas();
@@ -299,10 +301,11 @@
     }
 
     function resetGame() {
-      // 盤面データ: 0=空き, 1=P1(ピンク), 2=P2(青)
       board = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
       currentPlayer = P1;
       consecutivePasses = 0;
+      isDragging = false;
+      hoverPos = null;
       spawnNextTile();
       updateUI();
       draw();
@@ -362,18 +365,27 @@
       return null;
     }
 
-    function handlePointerMove(e) {
+    function handlePointerDown(e) {
+      canvas.setPointerCapture(e.pointerId);
+      isDragging = true;
       hoverPos = getGridPos(e.clientX, e.clientY);
       draw();
     }
 
-    function handlePointerDown(e) {
-      const clickPos = getGridPos(e.clientX, e.clientY);
-      if (!clickPos) return;
+    function handlePointerMove(e) {
+      if (isDragging) {
+        hoverPos = getGridPos(e.clientX, e.clientY);
+        draw();
+      }
+    }
 
-      if (canPlaceTile(currentTile, clickPos.r, clickPos.c)) {
-        placeTile(currentTile, clickPos.r, clickPos.c, currentPlayer);
-        
+    function handlePointerUp(e) {
+      if (!isDragging) return;
+      isDragging = false;
+
+      const releasePos = getGridPos(e.clientX, e.clientY);
+      if (releasePos && canPlaceTile(currentTile, releasePos.r, releasePos.c)) {
+        placeTile(currentTile, releasePos.r, releasePos.c, currentPlayer);
         consecutivePasses = 0;
         
         if (checkWin(currentPlayer)) {
@@ -382,13 +394,19 @@
           currentPlayer = currentPlayer === P1 ? P2 : P1;
           spawnNextTile();
           updateUI();
-          draw();
-          checkGameState();
         }
       }
+
+      hoverPos = null;
+      draw();
     }
 
-    // ★ 重ね置き完全禁止（空きマス 0 の場所にしか置けない）
+    function handlePointerCancel(e) {
+      isDragging = false;
+      hoverPos = null;
+      draw();
+    }
+
     function canPlaceTile(shape, startR, startC) {
       const rows = shape.length;
       const cols = shape[0].length;
@@ -399,12 +417,10 @@
             const targetR = startR + r;
             const targetC = startC + c;
 
-            // 1. 盤面外は配置不可
             if (targetR < 0 || targetR >= GRID_SIZE || targetC < 0 || targetC >= GRID_SIZE) {
               return false;
             }
 
-            // 2. マスが空（0）でない場合は、ピンク・青を問わず一切配置不可
             if (board[targetR][targetC] !== 0) {
               return false;
             }
