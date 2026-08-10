@@ -266,7 +266,7 @@
     let currentPlayer = P1;
     let currentTile = null;
     let hoverPos = null;
-    let isDragging = false;
+    let isTouching = false;
     let consecutivePasses = 0;
 
     const canvas = document.getElementById('boardCanvas');
@@ -278,10 +278,15 @@
       setupCanvas();
       resetGame();
 
-      canvas.addEventListener('pointerdown', handlePointerDown);
-      canvas.addEventListener('pointermove', handlePointerMove);
-      canvas.addEventListener('pointerup', handlePointerUp);
-      canvas.addEventListener('pointercancel', handlePointerCancel);
+      // タッチ・ドラッグイベントの設定
+      canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+      canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+      canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+      // マウス操作用（PCテスト用）
+      canvas.addEventListener('mousedown', handleMouseDown);
+      canvas.addEventListener('mousemove', handleMouseMove);
+      canvas.addEventListener('mouseup', handleMouseUp);
 
       window.addEventListener('resize', () => {
         setupCanvas();
@@ -304,7 +309,7 @@
       board = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
       currentPlayer = P1;
       consecutivePasses = 0;
-      isDragging = false;
+      isTouching = false;
       hoverPos = null;
       spawnNextTile();
       updateUI();
@@ -365,27 +370,32 @@
       return null;
     }
 
-    function handlePointerDown(e) {
-      canvas.setPointerCapture(e.pointerId);
-      isDragging = true;
-      hoverPos = getGridPos(e.clientX, e.clientY);
+    // --- タッチ操作処理 ---
+    function handleTouchStart(e) {
+      e.preventDefault();
+      isTouching = true;
+      const touch = e.touches[0];
+      hoverPos = getGridPos(touch.clientX, touch.clientY);
       draw();
     }
 
-    function handlePointerMove(e) {
-      if (isDragging) {
-        hoverPos = getGridPos(e.clientX, e.clientY);
+    function handleTouchMove(e) {
+      e.preventDefault();
+      if (isTouching) {
+        const touch = e.touches[0];
+        hoverPos = getGridPos(touch.clientX, touch.clientY);
         draw();
       }
     }
 
-    function handlePointerUp(e) {
-      if (!isDragging) return;
-      isDragging = false;
+    function handleTouchEnd(e) {
+      e.preventDefault();
+      if (!isTouching) return;
+      isTouching = false;
 
-      const releasePos = getGridPos(e.clientX, e.clientY);
-      if (releasePos && canPlaceTile(currentTile, releasePos.r, releasePos.c)) {
-        placeTile(currentTile, releasePos.r, releasePos.c, currentPlayer);
+      // 指を離した位置で配置を確定
+      if (hoverPos && canPlaceTile(currentTile, hoverPos.r, hoverPos.c)) {
+        placeTile(currentTile, hoverPos.r, hoverPos.c, currentPlayer);
         consecutivePasses = 0;
         
         if (checkWin(currentPlayer)) {
@@ -401,8 +411,37 @@
       draw();
     }
 
-    function handlePointerCancel(e) {
-      isDragging = false;
+    // --- マウス操作処理 ---
+    function handleMouseDown(e) {
+      isTouching = true;
+      hoverPos = getGridPos(e.clientX, e.clientY);
+      draw();
+    }
+
+    function handleMouseMove(e) {
+      if (isTouching) {
+        hoverPos = getGridPos(e.clientX, e.clientY);
+        draw();
+      }
+    }
+
+    function handleMouseUp(e) {
+      if (!isTouching) return;
+      isTouching = false;
+
+      if (hoverPos && canPlaceTile(currentTile, hoverPos.r, hoverPos.c)) {
+        placeTile(currentTile, hoverPos.r, hoverPos.c, currentPlayer);
+        consecutivePasses = 0;
+        
+        if (checkWin(currentPlayer)) {
+          showModal(currentPlayer === P1 ? "ピンクの勝利！🏆" : "青の勝利！🏆", "端から端まで繋がりました！");
+        } else {
+          currentPlayer = currentPlayer === P1 ? P2 : P1;
+          spawnNextTile();
+          updateUI();
+        }
+      }
+
       hoverPos = null;
       draw();
     }
