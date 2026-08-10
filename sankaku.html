@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>三角取り陣取りバトル</title>
+  
+  <!-- Web App 設定（iOSホーム画面追加用） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="三角取り">
+  
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #1e293b;
+      --p1-color: #ef4444; /* 赤 */
+      --p2-color: #3b82f6; /* 青 */
+      --p3-color: #10b981; /* 緑 */
+      --p4-color: #f59e0b; /* 黄/橙 */
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 100vh;
+      padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom) 12px;
+      overflow: hidden;
+    }
+
+    header {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+
+    /* プレイヤー数選択 */
+    .mode-select {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .mode-btn {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      background: white;
+      color: #64748b;
+    }
+
+    .mode-btn.active {
+      background: #0f172a;
+      color: white;
+      border-color: #0f172a;
+    }
+
+    /* スコアボード */
+    .scoreboard {
+      display: flex;
+      width: 100%;
+      max-width: 400px;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .p-card {
+      flex: 1;
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 6px 4px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .p-card.active {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    }
+
+    .p-card.p1.active { border-color: var(--p1-color); }
+    .p-card.p2.active { border-color: var(--p2-color); }
+    .p-card.p3.active { border-color: var(--p3-color); }
+    .p-card.p4.active { border-color: var(--p4-color); }
+
+    .p-name {
+      font-size: 0.7rem;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+
+    .p1 .p-name { color: var(--p1-color); }
+    .p2 .p-name { color: var(--p2-color); }
+    .p3 .p-name { color: var(--p3-color); }
+    .p4 .p-name { color: var(--p4-color); }
+
+    .p-score {
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    /* ゲームキャンバス */
+    .canvas-container {
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 1 / 1;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      position: relative;
+      touch-action: none;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 16px;
+      display: block;
+    }
+
+    /* フッター・コントロール */
+    .controls {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .status-text {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #334155;
+      height: 20px;
+    }
+
+    .btn-reset {
+      background: #3b82f6;
+      color: white;
+      font-size: 0.9rem;
+      font-weight: bold;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 3px 0 #1d4ed8;
+      width: 100%;
+    }
+
+    .btn-reset:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #1d4ed8;
+    }
+
+    /* モーダル */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 300px;
+      width: 80%;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .modal-desc {
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+      color: #475569;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🔺 三角取り陣取りバトル</h1>
+    <div class="mode-select">
+      <button class="mode-btn active" onclick="setPlayerCount(2, false)">2人</button>
+      <button class="mode-btn" onclick="setPlayerCount(3, false)">3人</button>
+      <button class="mode-btn" onclick="setPlayerCount(4, false)">4人</button>
+      <button class="mode-btn" onclick="setPlayerCount(2, true)">VS CPU</button>
+    </div>
+  </header>
+
+  <div class="scoreboard" id="scoreboard"></div>
+
+  <div class="canvas-container">
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="status-text" id="statusText">点を2つ選んで線を引こう</div>
+    <button class="btn-reset" onclick="resetGame()">盤面をリセット</button>
+  </div>
+
+  <!-- 結果モーダル -->
+  <div class="modal-overlay" id="resultModal">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">ゲーム終了！</div>
+      <div class="modal-desc" id="modalDesc">結果</div>
+      <button class="btn-reset" onclick="resetGame()">もう一度あそぶ</button>
+    </div>
+  </div>
+
+  <script>
+    const P_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
+    const P_LIGHT_COLORS = ['rgba(239, 68, 68, 0.25)', 'rgba(59, 130, 246, 0.25)', 'rgba(16, 185, 129, 0.25)', 'rgba(245, 158, 11, 0.25)'];
+    const P_NAMES = ['P1', 'P2', 'P3', 'P4'];
+
+    let playerCount = 2;
+    let isCpuMode = false;
+    let currentPlayer = 0;
+
+    let points = [];
+    let lines = []; 
+    let triangles = []; 
+    let scores = [0, 0, 0, 0];
+
+    let selectedPoint = null;
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function init() {
+      setupCanvas();
+      setPlayerCount(2, false);
+      
+      canvas.addEventListener('pointerdown', handleCanvasClick);
+      window.addEventListener('resize', () => {
+        setupCanvas();
+        draw();
+      });
+    }
+
+    function setupCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+
+    function setPlayerCount(count, cpu) {
+      playerCount = count;
+      isCpuMode = cpu;
+      
+      const btns = document.querySelectorAll('.mode-btn');
+      btns.forEach(b => b.classList.remove('active'));
+      if (cpu) btns[3].classList.add('active');
+      else btns[count - 2].classList.add('active');
+
+      resetGame();
+    }
+
+    function resetGame() {
+      scores = [0, 0, 0, 0];
+      lines = [];
+      triangles = [];
+      selectedPoint = null;
+      currentPlayer = 0;
+
+      generatePoints();
+      buildScoreboard();
+      updateUI();
+      draw();
+      document.getElementById('resultModal').classList.remove('active');
+    }
+
+    function generatePoints() {
+      points = [];
+      const numPoints = playerCount === 2 ? 12 : (playerCount === 3 ? 15 : 18);
+      const width = canvas.parentElement.clientWidth;
+      const height = canvas.parentElement.clientHeight;
+      const margin = 36;
+
+      let attempts = 0;
+      while (points.length < numPoints && attempts < 1000) {
+        attempts++;
+        const x = margin + Math.random() * (width - margin * 2);
+        const y = margin + Math.random() * (height - margin * 2);
+
+        const tooClose = points.some(p => Math.hypot(p.x - x, p.y - y) < 50);
+        if (!tooClose) {
+          points.push({ x, y });
+        }
+      }
+    }
+
+    function buildScoreboard() {
+      const board = document.getElementById('scoreboard');
+      board.innerHTML = '';
+
+      for (let i = 0; i < playerCount; i++) {
+        const card = document.createElement('div');
+        card.className = `p-card p${i + 1}`;
+        card.id = `p-card-${i}`;
+
+        const name = document.createElement('div');
+        name.className = 'p-name';
+        name.textContent = (i === 1 && isCpuMode) ? 'CPU' : P_NAMES[i];
+
+        const score = document.createElement('div');
+        score.className = 'p-score';
+        score.id = `p-score-${i}`;
+        score.textContent = '0';
+
+        card.appendChild(name);
+        card.appendChild(score);
+        board.appendChild(card);
+      }
+    }
+
+    function updateUI() {
+      for (let i = 0; i < playerCount; i++) {
+        const card = document.getElementById(`p-card-${i}`);
+        const scoreEl = document.getElementById(`p-score-${i}`);
+        if (card) card.classList.toggle('active', i === currentPlayer);
+        if (scoreEl) scoreEl.textContent = scores[i];
+      }
+
+      const pName = (currentPlayer === 1 && isCpuMode) ? 'CPU' : P_NAMES[currentPlayer];
+      document.getElementById('statusText').textContent = `${pName} の番です (点をタップ)`;
+
+      if (currentPlayer === 1 && isCpuMode) {
+        setTimeout(cpuPlay, 600);
+      }
+    }
+
+    function handleCanvasClick(e) {
+      if (currentPlayer === 1 && isCpuMode) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      let clickedIdx = -1;
+      points.forEach((p, idx) => {
+        if (Math.hypot(p.x - clickX, p.y - clickY) < 24) {
+          clickedIdx = idx;
+        }
+      });
+
+      if (clickedIdx !== -1) {
+        if (selectedPoint === null) {
+          selectedPoint = clickedIdx;
+        } else if (selectedPoint === clickedIdx) {
+          selectedPoint = null;
+        } else {
+          const success = tryAddLine(selectedPoint, clickedIdx);
+          if (!success) {
+            document.getElementById('statusText').textContent = "その線は引けません（交差または重複）";
+          }
+          selectedPoint = null;
+        }
+        draw();
+      }
+    }
+
+    // --- 線分の交差判定アルゴリズム ---
+    function ccw(A, B, C) {
+      return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+    }
+
+    function isIntersect(p1, p2, p3, p4) {
+      // 端点を共有している場合は交差（クロス）とみなさない
+      if ((p1.x === p3.x && p1.y === p3.y) || (p1.x === p4.x && p1.y === p4.y) ||
+          (p2.x === p3.x && p2.y === p3.y) || (p2.x === p4.x && p2.y === p4.y)) {
+        return false;
+      }
+      return (ccw(p1, p3, p4) !== ccw(p2, p3, p4)) && (ccw(p1, p2, p3) !== ccw(p1, p2, p4));
+    }
+
+    function isValidLine(p1Idx, p2Idx) {
+      // 既存の線との重複チェック
+      const exists = lines.some(l => (l.p1 === p1Idx && l.p2 === p2Idx) || (l.p1 === p2Idx && l.p2 === p1Idx));
+      if (exists) return false;
+
+      const newP1 = points[p1Idx];
+      const newP2 = points[p2Idx];
+
+      // 既存の全ラインとの交差チェック
+      for (let l of lines) {
+        const existP1 = points[l.p1];
+        const existP2 = points[l.p2];
+
+        if (isIntersect(newP1, newP2, existP1, existP2)) {
+          return false; // 交差するため無効
+        }
+      }
+      return true;
+    }
+
+    function tryAddLine(p1Idx, p2Idx) {
+      if (!isValidLine(p1Idx, p2Idx)) return false;
+
+      lines.push({ p1: p1Idx, p2: p2Idx });
+
+      const newTrianglesCount = checkNewTriangles(p1Idx, p2Idx);
+
+      if (newTrianglesCount > 0) {
+        scores[currentPlayer] += newTrianglesCount;
+      } else {
+        currentPlayer = (currentPlayer + 1) % playerCount;
+      }
+
+      updateUI();
+      checkGameOver();
+      return true;
+    }
+
+    function checkNewTriangles(p1Idx, p2Idx) {
+      let formedCount = 0;
+
+      for (let k = 0; k < points.length; k++) {
+        if (k === p1Idx || k === p2Idx) continue;
+
+        const hasP1K = lines.some(l => (l.p1 === p1Idx && l.p2 === k) || (l.p1 === k && l.p2 === p1Idx));
+        const hasP2K = lines.some(l => (l.p1 === p2Idx && l.p2 === k) || (l.p1 === k && l.p2 === p2Idx));
+
+        if (hasP1K && hasP2K) {
+          const triKey = [p1Idx, p2Idx, k].sort().join('-');
+          const alreadyExists = triangles.some(t => t.points.sort().join('-') === triKey);
+
+          if (!alreadyExists) {
+            triangles.push({ points: [p1Idx, p2Idx, k], owner: currentPlayer });
+            formedCount++;
+          }
+        }
+      }
+      return formedCount;
+    }
+
+    function cpuPlay() {
+      let validLines = [];
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          if (isValidLine(i, j)) {
+            validLines.push({ p1: i, p2: j });
+          }
+        }
+      }
+
+      if (validLines.length === 0) {
+        checkGameOver(true);
+        return;
+      }
+
+      // 三角形ができる線を優先
+      let bestLine = null;
+      for (let line of validLines) {
+        lines.push(line);
+        let count = 0;
+        for (let k = 0; k < points.length; k++) {
+          if (k === line.p1 || k === line.p2) continue;
+          const hasP1K = lines.some(l => (l.p1 === line.p1 && l.p2 === k) || (l.p1 === k && l.p2 === line.p1));
+          const hasP2K = lines.some(l => (l.p1 === line.p2 && l.p2 === k) || (l.p1 === k && l.p2 === line.p2));
+          if (hasP1K && hasP2K) count++;
+        }
+        lines.pop();
+
+        if (count > 0) {
+          bestLine = line;
+          break;
+        }
+      }
+
+      if (!bestLine) {
+        bestLine = validLines[Math.floor(Math.random() * validLines.length)];
+      }
+
+      tryAddLine(bestLine.p1, bestLine.p2);
+      draw();
+    }
+
+    function checkGameOver(forceEnd = false) {
+      let hasValidMove = false;
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          if (isValidLine(i, j)) {
+            hasValidMove = true;
+            break;
+          }
+        }
+        if (hasValidMove) break;
+      }
+
+      if (!hasValidMove || forceEnd) {
+        setTimeout(showResult, 500);
+      }
+    }
+
+    function showResult() {
+      let maxScore = -1;
+      let winners = [];
+
+      scores.forEach((s, idx) => {
+        if (s > maxScore) {
+          maxScore = s;
+          winners = [idx];
+        } else if (s === maxScore) {
+          winners.push(idx);
+        }
+      });
+
+      let title = "";
+      let desc = "";
+
+      if (winners.length > 1) {
+        title = "引き分け！";
+        desc = `同点で並びました！（獲得三角形: ${maxScore}個）`;
+      } else {
+        const winnerName = (winners[0] === 1 && isCpuMode) ? 'CPU' : P_NAMES[winners[0]];
+        title = `${winnerName} の勝利！🏆`;
+        desc = `${maxScore} 個の三角形を獲得しました！`;
+      }
+
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalDesc').textContent = desc;
+      document.getElementById('resultModal').classList.add('active');
+    }
+
+    function draw() {
+      const width = canvas.parentElement.clientWidth;
+      const height = canvas.parentElement.clientHeight;
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. 三角形の描画
+      triangles.forEach(tri => {
+        const p1 = points[tri.points[0]];
+        const p2 = points[tri.points[1]];
+        const p3 = points[tri.points[2]];
+
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+
+        ctx.fillStyle = P_LIGHT_COLORS[tri.owner];
+        ctx.fill();
+
+        const centerX = (p1.x + p2.x + p3.x) / 3;
+        const centerY = (p1.y + p2.y + p3.y) / 3;
+        ctx.fillStyle = P_COLORS[tri.owner];
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', centerX, centerY);
+      });
+
+      // 2. 線の描画
+      lines.forEach(l => {
+        const p1 = points[l.p1];
+        const p2 = points[l.p2];
+
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      });
+
+      // 3. 点の描画
+      points.forEach((p, idx) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, idx === selectedPoint ? 10 : 7, 0, Math.PI * 2);
+
+        if (idx === selectedPoint) {
+          ctx.fillStyle = P_COLORS[currentPlayer];
+          ctx.shadowColor = P_COLORS[currentPlayer];
+          ctx.shadowBlur = 8;
+        } else {
+          ctx.fillStyle = '#ef4444';
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
