@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ワタルート 〜端から端へ繋げ！〜</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ワタルート">
+  
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --p1-color: #ec4899; /* ピンク (上下) */
+      --p2-color: #06b6d4; /* 青 (左右) */
+      --text-color: #f8fafc;
+      --grid-bg: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 100vh;
+      padding: env(safe-area-inset-top) 8px env(safe-area-inset-bottom) 8px;
+      overflow: hidden;
+    }
+
+    header {
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      padding: 6px 12px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .p-indicator {
+      padding: 3px 8px;
+      border-radius: 6px;
+      transition: all 0.3s;
+    }
+
+    .p-indicator.p1 { background: rgba(236, 72, 153, 0.2); color: var(--p1-color); }
+    .p-indicator.p2 { background: rgba(6, 182, 212, 0.2); color: var(--p2-color); }
+    .p-indicator.active {
+      font-weight: 800;
+      transform: scale(1.05);
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .game-area {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      aspect-ratio: 1 / 1;
+      background: var(--grid-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      touch-action: none;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .controls {
+      width: 100%;
+      max-width: 380px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tile-preview-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      width: 100%;
+    }
+
+    .preview-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .preview-title {
+      font-size: 0.7rem;
+      color: #94a3b8;
+    }
+
+    .tile-canvas-preview {
+      width: 60px;
+      height: 60px;
+      background: #0f172a;
+      border-radius: 8px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: white;
+      transition: opacity 0.2s;
+    }
+
+    .btn:active { opacity: 0.8; }
+    .btn-rotate { background: #6366f1; }
+    .btn-pass { background: #e11d48; }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 16px;
+      text-align: center;
+      max-width: 300px;
+      width: 80%;
+    }
+
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .modal-desc {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+
+    .btn-reset {
+      background: #10b981;
+      color: white;
+      font-size: 0.95rem;
+      font-weight: bold;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🌉 ワタルート (平面対戦)</h1>
+  </header>
+
+  <div class="status-bar">
+    <div class="p-indicator p1 active" id="indP1">ピンク (上下)</div>
+    <div id="statusText">配置する場所を選択</div>
+    <div class="p-indicator p2" id="indP2">青 (左右)</div>
+  </div>
+
+  <div class="game-area">
+    <canvas id="boardCanvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="tile-preview-container">
+      <div class="preview-box">
+        <span class="preview-title">配給タイル</span>
+        <canvas class="tile-canvas-preview" id="previewCurrent"></canvas>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-rotate" onclick="rotateCurrentTile()">🔄 90°回転</button>
+        <button class="btn btn-pass" onclick="passTurn()">パスする</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="resultModal">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">ゲーム終了</div>
+      <div class="modal-desc" id="modalDesc">結果</div>
+      <button class="btn-reset" onclick="resetGame()">もう一度遊ぶ</button>
+    </div>
+  </div>
+
+  <script>
+    const GRID_SIZE = 12;
+    const P1 = 1; // ピンク (上下)
+    const P2 = 2; // 青 (左右)
+
+    const TILE_SHAPES = [
+      [[1]], [[1,1]], [[1,1,1]], [[1,1],[1,0]], [[1,1,1,1]], 
+      [[1,1,1],[1,0,0]], [[1,1],[1,1]], [[0,1,0],[1,1,1]], [[1,1,0],[0,1,1]], 
+      [[1,1,1,1,1]], [[1,1,1,1],[1,0,0,0]], [[1,1,1],[1,1,0]], 
+      [[1,1,1],[0,1,0],[0,1,0]], [[1,0,0],[1,1,1],[0,0,1]], [[0,1,0],[1,1,1],[0,1,0]]
+    ];
+
+    let board = [];
+    let currentPlayer = P1;
+    let currentTile = null;
+    let hoverPos = null;
+    let consecutivePasses = 0;
+
+    const canvas = document.getElementById('boardCanvas');
+    const ctx = canvas.getContext('2d');
+    const previewCanvas = document.getElementById('previewCurrent');
+    const previewCtx = previewCanvas.getContext('2d');
+
+    function init() {
+      setupCanvas();
+      resetGame();
+
+      canvas.addEventListener('pointermove', handlePointerMove);
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      canvas.addEventListener('pointerleave', () => { hoverPos = null; draw(); });
+
+      window.addEventListener('resize', () => {
+        setupCanvas();
+        draw();
+      });
+    }
+
+    function setupCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+      previewCanvas.width = 60 * window.devicePixelRatio;
+      previewCanvas.height = 60 * window.devicePixelRatio;
+      previewCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+
+    function resetGame() {
+      // 盤面データ: 0=空き, 1=P1(ピンク), 2=P2(青)
+      board = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
+      currentPlayer = P1;
+      consecutivePasses = 0;
+      spawnNextTile();
+      updateUI();
+      draw();
+      document.getElementById('resultModal').classList.remove('active');
+    }
+
+    function spawnNextTile() {
+      const randomShape = TILE_SHAPES[Math.floor(Math.random() * TILE_SHAPES.length)];
+      currentTile = JSON.parse(JSON.stringify(randomShape));
+      drawPreview();
+    }
+
+    function rotateShape(shape) {
+      const rows = shape.length;
+      const cols = shape[0].length;
+      let rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          rotated[c][rows - 1 - r] = shape[r][c];
+        }
+      }
+      return rotated;
+    }
+
+    function rotateCurrentTile() {
+      currentTile = rotateShape(currentTile);
+      drawPreview();
+      draw();
+    }
+
+    function passTurn() {
+      consecutivePasses++;
+      currentPlayer = currentPlayer === P1 ? P2 : P1;
+      spawnNextTile();
+      updateUI();
+      draw();
+      checkGameState();
+    }
+
+    function updateUI() {
+      document.getElementById('indP1').classList.toggle('active', currentPlayer === P1);
+      document.getElementById('indP2').classList.toggle('active', currentPlayer === P2);
+    }
+
+    function getGridPos(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const cellSize = rect.width / (GRID_SIZE + 2);
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      const col = Math.floor(x / cellSize) - 1;
+      const row = Math.floor(y / cellSize) - 1;
+
+      if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
+        return { r: row, c: col };
+      }
+      return null;
+    }
+
+    function handlePointerMove(e) {
+      hoverPos = getGridPos(e.clientX, e.clientY);
+      draw();
+    }
+
+    function handlePointerDown(e) {
+      const clickPos = getGridPos(e.clientX, e.clientY);
+      if (!clickPos) return;
+
+      if (canPlaceTile(currentTile, clickPos.r, clickPos.c)) {
+        placeTile(currentTile, clickPos.r, clickPos.c, currentPlayer);
+        
+        consecutivePasses = 0;
+        
+        if (checkWin(currentPlayer)) {
+          showModal(currentPlayer === P1 ? "ピンクの勝利！🏆" : "青の勝利！🏆", "端から端まで繋がりました！");
+        } else {
+          currentPlayer = currentPlayer === P1 ? P2 : P1;
+          spawnNextTile();
+          updateUI();
+          draw();
+          checkGameState();
+        }
+      }
+    }
+
+    // ★ 重ね置き完全禁止（空きマス 0 の場所にしか置けない）
+    function canPlaceTile(shape, startR, startC) {
+      const rows = shape.length;
+      const cols = shape[0].length;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (shape[r][c] === 1) {
+            const targetR = startR + r;
+            const targetC = startC + c;
+
+            // 1. 盤面外は配置不可
+            if (targetR < 0 || targetR >= GRID_SIZE || targetC < 0 || targetC >= GRID_SIZE) {
+              return false;
+            }
+
+            // 2. マスが空（0）でない場合は、ピンク・青を問わず一切配置不可
+            if (board[targetR][targetC] !== 0) {
+              return false;
+            }
+          }
+        }
+      }
+      return true;
+    }
+
+    function placeTile(shape, startR, startC, player) {
+      const rows = shape.length;
+      const cols = shape[0].length;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (shape[r][c] === 1) {
+            board[startR + r][startC + c] = player;
+          }
+        }
+      }
+    }
+
+    function checkWin(player) {
+      let visited = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(false));
+      let queue = [];
+
+      if (player === P1) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (board[0][c] === P1) { queue.push({ r: 0, c: c }); visited[0][c] = true; }
+        }
+      } else {
+        for (let r = 0; r < GRID_SIZE; r++) {
+          if (board[r][0] === P2) { queue.push({ r: r, c: 0 }); visited[r][0] = true; }
+        }
+      }
+
+      const dr = [-1, 1, 0, 0];
+      const dc = [0, 0, -1, 1];
+
+      while (queue.length > 0) {
+        const { r, c } = queue.shift();
+        if (player === P1 && r === GRID_SIZE - 1) return true;
+        if (player === P2 && c === GRID_SIZE - 1) return true;
+
+        for (let i = 0; i < 4; i++) {
+          const nr = r + dr[i];
+          const nc = c + dc[i];
+          if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && !visited[nr][nc]) {
+            if (board[nr][nc] === player) {
+              visited[nr][nc] = true;
+              queue.push({ r: nr, c: nc });
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    function canEverWin(player) {
+      let visited = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(false));
+      let queue = [];
+
+      if (player === P1) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (board[0][c] === P1 || board[0][c] === 0) {
+            queue.push({ r: 0, c: c });
+            visited[0][c] = true;
+          }
+        }
+      } else {
+        for (let r = 0; r < GRID_SIZE; r++) {
+          if (board[r][0] === P2 || board[r][0] === 0) {
+            queue.push({ r: r, c: 0 });
+            visited[r][0] = true;
+          }
+        }
+      }
+
+      const dr = [-1, 1, 0, 0];
+      const dc = [0, 0, -1, 1];
+
+      while (queue.length > 0) {
+        const { r, c } = queue.shift();
+        if (player === P1 && r === GRID_SIZE - 1) return true;
+        if (player === P2 && c === GRID_SIZE - 1) return true;
+
+        for (let i = 0; i < 4; i++) {
+          const nr = r + dr[i];
+          const nc = c + dc[i];
+          if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && !visited[nr][nc]) {
+            const canPass = (board[nr][nc] === player || board[nr][nc] === 0);
+            if (canPass) {
+              visited[nr][nc] = true;
+              queue.push({ r: nr, c: nc });
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    function checkGameState() {
+      const p1CanWin = canEverWin(P1);
+      const p2CanWin = canEverWin(P2);
+
+      let emptyCount = 0;
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (board[r][c] === 0) emptyCount++;
+        }
+      }
+
+      if ((!p1CanWin && !p2CanWin) || consecutivePasses >= 4 || emptyCount <= 10) {
+        showModal("引き分け！🤝", "お互いに端まで繋がるルートが存在しなくなりました。");
+      }
+    }
+
+    function showModal(title, desc) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalDesc').textContent = desc;
+      document.getElementById('resultModal').classList.add('active');
+    }
+
+    function draw() {
+      const width = canvas.parentElement.clientWidth;
+      const cellSize = width / (GRID_SIZE + 2);
+      ctx.clearRect(0, 0, width, width);
+
+      ctx.fillStyle = '#ec4899';
+      ctx.fillRect(cellSize, 0, GRID_SIZE * cellSize, cellSize * 0.8);
+      ctx.fillRect(cellSize, (GRID_SIZE + 1.2) * cellSize, GRID_SIZE * cellSize, cellSize * 0.8);
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(0, cellSize, cellSize * 0.8, GRID_SIZE * cellSize);
+      ctx.fillRect((GRID_SIZE + 1.2) * cellSize, cellSize, cellSize * 0.8, GRID_SIZE * cellSize);
+
+      ctx.save();
+      ctx.translate(cellSize, cellSize);
+
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          ctx.strokeStyle = '#475569';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+
+          const val = board[r][c];
+          if (val === P1) {
+            drawBlock(c, r, cellSize, '#ec4899');
+          } else if (val === P2) {
+            drawBlock(c, r, cellSize, '#06b6d4');
+          }
+        }
+      }
+
+      if (hoverPos) {
+        const isOverallValid = canPlaceTile(currentTile, hoverPos.r, hoverPos.c);
+        const previewColor = isOverallValid 
+          ? (currentPlayer === P1 ? 'rgba(236, 72, 153, 0.6)' : 'rgba(6, 182, 212, 0.6)')
+          : 'rgba(239, 68, 68, 0.6)';
+
+        for (let r = 0; r < currentTile.length; r++) {
+          for (let c = 0; c < currentTile[0].length; c++) {
+            if (currentTile[r][c] === 1) {
+              const tr = hoverPos.r + r;
+              const tc = hoverPos.c + c;
+              if (tr >= 0 && tr < GRID_SIZE && tc >= 0 && tc < GRID_SIZE) {
+                ctx.fillStyle = previewColor;
+                ctx.fillRect(tc * cellSize + 2, tr * cellSize + 2, cellSize - 4, cellSize - 4);
+              }
+            }
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function drawBlock(c, r, size, color) {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.fillRect(c * size + 2, r * size + 2, size - 4, size - 4);
+      ctx.restore();
+    }
+
+    function drawPreview() {
+      previewCtx.clearRect(0, 0, 60, 60);
+      if (!currentTile) return;
+
+      const rows = currentTile.length;
+      const cols = currentTile[0].length;
+      const cellSize = Math.min(48 / cols, 48 / rows);
+      const offsetX = (60 - cols * cellSize) / 2;
+      const offsetY = (60 - rows * cellSize) / 2;
+
+      previewCtx.fillStyle = currentPlayer === P1 ? '#ec4899' : '#06b6d4';
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (currentTile[r][c] === 1) {
+            previewCtx.fillRect(offsetX + c * cellSize, offsetY + r * cellSize, cellSize - 2, cellSize - 2);
+          }
+        }
+      }
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
