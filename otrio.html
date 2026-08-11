@@ -40,7 +40,6 @@
       overflow: hidden;
     }
 
-    /* ロビー（設定画面） */
     .screen {
       width: 100%;
       max-width: 380px;
@@ -118,7 +117,6 @@
       box-shadow: none;
     }
 
-    /* ゲーム画面 */
     .status-bar {
       background: var(--card-bg);
       padding: 8px 16px;
@@ -142,7 +140,6 @@
       cursor: pointer;
     }
 
-    /* メイン盤面 */
     .board-container {
       width: 100%;
       aspect-ratio: 1 / 1;
@@ -168,7 +165,6 @@
 
     .cell:active { opacity: 0.8; }
 
-    /* リング（円）表現 */
     .ring {
       position: absolute;
       border-style: solid;
@@ -181,13 +177,11 @@
     .ring.medium { width: 55%; height: 55%; border-width: 6px; }
     .ring.small { width: 30%; height: 30%; border-width: 5px; }
 
-    /* リングの色 */
     .color-red { border-color: var(--red); }
     .color-blue { border-color: var(--blue); }
     .color-green { border-color: var(--green); }
     .color-yellow { border-color: var(--yellow); }
 
-    /* 手札（パーツ選択） */
     .hand-area {
       background: var(--card-bg);
       border-radius: 12px;
@@ -230,7 +224,6 @@
 
     .piece-count { font-size: 0.75rem; font-weight: bold; }
 
-    /* モーダル */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -264,7 +257,6 @@
 </head>
 <body>
 
-  <!-- 設定画面（ロビー） -->
   <div class="screen" id="lobbyScreen">
     <h1>⭕ Otrio (オトリオ)</h1>
     <div class="lobby-card">
@@ -278,28 +270,24 @@
       </div>
       <div class="player-select-row">
         <span class="p-label"><span class="dot" style="background:var(--green);"></span> P3 (緑)</span>
-        <select id="p3Type"><option value="none">参加しない</option><option value="human">人間</option><option value="cpu">CPU</option></select>
+        <select id="p3Type"><option value="none">参加しない</option><option value="human">人間</option><option value="cpu" selected>CPU</option></select>
       </div>
       <div class="player-select-row">
         <span class="p-label"><span class="dot" style="background:var(--yellow);"></span> P4 (黄)</span>
-        <select id="p4Type"><option value="none">参加しない</option><option value="human">人間</option><option value="cpu">CPU</option></select>
+        <select id="p4Type"><option value="none">参加しない</option><option value="human">人間</option><option value="cpu" selected>CPU</option></select>
       </div>
       <button class="btn-main" id="startBtn" onclick="startGame()">対戦開始</button>
     </div>
   </div>
 
-  <!-- ゲーム画面 -->
   <div class="screen hidden" id="gameScreen">
     <div class="status-bar">
       <span id="turnText">P1のターン</span>
       <button class="btn-sub" onclick="showLobby()">参戦設定へ</button>
     </div>
 
-    <div class="board-container" id="board">
-      <!-- 3x3 cells generated via JS -->
-    </div>
+    <div class="board-container" id="board"></div>
 
-    <!-- 手札（サイズ選択） -->
     <div class="hand-area" id="handArea">
       <div class="piece-select" id="btnLarge" onclick="selectSize('large')">
         <div class="piece-icon large" id="iconLarge"></div>
@@ -316,7 +304,6 @@
     </div>
   </div>
 
-  <!-- 勝利モーダル -->
   <div class="modal-overlay" id="resultModal">
     <div class="modal-content">
       <div class="modal-title" id="modalTitle">WIN!</div>
@@ -333,9 +320,9 @@
       { id: 'p4', name: 'P4 (黄)', colorClass: 'color-yellow', hex: 'var(--yellow)' }
     ];
 
-    let activePlayers = []; // 参加プレイヤーリスト
+    let activePlayers = [];
     let turnIndex = 0;
-    let selectedSize = 'large'; // 現在選択中のパーツサイズ
+    let selectedSize = 'large';
     let boardState = Array(9).fill(null).map(() => ({ large: null, medium: null, small: null }));
     let playerHands = {};
 
@@ -354,7 +341,7 @@
       });
 
       if (activePlayers.length < 2) {
-        alert('2人以上のプレイヤー（人間またはCPU）を設定してください。');
+        alert('2人以上のプレイヤーを設定してください。');
         return;
       }
 
@@ -406,7 +393,6 @@
       turnText.textContent = `${p.name} のターン`;
       turnText.style.color = p.hex;
 
-      // 手札で最初に使用可能なサイズを選択
       if (playerHands[p.id][selectedSize] === 0) {
         const sizes = ['large', 'medium', 'small'];
         selectedSize = sizes.find(s => playerHands[p.id][s] > 0) || 'large';
@@ -443,7 +429,7 @@
 
     function handleCellClick(cellIndex) {
       const p = activePlayers[turnIndex];
-      if (p.type === 'cpu') return; // CPUのターンはタップ無効
+      if (p.type === 'cpu') return;
 
       if (tryPlacePiece(cellIndex, selectedSize, p)) {
         finishTurn();
@@ -451,7 +437,6 @@
     }
 
     function tryPlacePiece(cellIndex, size, player) {
-      // 指定サイズが空いているかチェック
       if (boardState[cellIndex][size] === null && playerHands[player.id][size] > 0) {
         boardState[cellIndex][size] = player.id;
         playerHands[player.id][size]--;
@@ -474,7 +459,6 @@
         return;
       }
 
-      // 次のプレイヤーへ
       turnIndex = (turnIndex + 1) % activePlayers.length;
       updateTurnUI();
       triggerCPUTurnIfNeeded();
@@ -483,16 +467,16 @@
     function triggerCPUTurnIfNeeded() {
       const p = activePlayers[turnIndex];
       if (p.type === 'cpu') {
-        setTimeout(executeCPUMove, 600); // 0.6秒後に思考して配置
+        setTimeout(executeCPUMove, 400);
       }
     }
 
-    // AI（CPU）思考ロジック
+    // ★ 強化されたCPU思考アルゴリズム（勝利＋絶対防衛）
     function executeCPUMove() {
       const p = activePlayers[turnIndex];
       const validMoves = [];
 
-      // 置けるすべての組み合わせを探索
+      // 置けるすべての選択肢を取得
       for (let i = 0; i < 9; i++) {
         ['large', 'medium', 'small'].forEach(s => {
           if (boardState[i][s] === null && playerHands[p.id][s] > 0) {
@@ -506,7 +490,7 @@
         return;
       }
 
-      // 1. 自分が1手で勝てる手があれば優先実行
+      // 1. 【最優先】自分が即勝利できる手があるかチェック
       for (let move of validMoves) {
         boardState[move.index][move.size] = p.id;
         if (checkWinner() === p.id) {
@@ -515,10 +499,36 @@
           finishTurn();
           return;
         }
-        boardState[move.index][move.size] = null; // リセット
+        boardState[move.index][move.size] = null; // 元に戻す
       }
 
-      // 2. それ以外はランダム配置
+      // 2. 【第2優先】他プレイヤー（人間含む全員）にリーチがあれば絶対ブロック（ディフェンス）
+      const opponentPlayers = activePlayers.filter(op => op.id !== p.id);
+      for (let op of opponentPlayers) {
+        for (let move of validMoves) {
+          // 仮想的に相手の手として置いて勝利判定が出るか見る
+          boardState[move.index][move.size] = op.id;
+          if (checkWinner() === op.id) {
+            // 相手が勝つ場所を発見！そこへ自分が先回りしてブロックする
+            boardState[move.index][move.size] = p.id;
+            playerHands[p.id][move.size]--;
+            renderBoard();
+            finishTurn();
+            return;
+          }
+          boardState[move.index][move.size] = null; // 元に戻す
+        }
+      }
+
+      // 3. 【第3優先】中央マス（インデックス4）の空きがあれば狙う
+      const centerMove = validMoves.find(m => m.index === 4);
+      if (centerMove && Math.random() < 0.7) {
+        tryPlacePiece(centerMove.index, centerMove.size, p);
+        finishTurn();
+        return;
+      }
+
+      // 4. 【通常手】ランダム配置
       const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
       tryPlacePiece(randomMove.index, randomMove.size, p);
       finishTurn();
@@ -542,7 +552,6 @@
       }
     }
 
-    // 勝利判定
     function checkWinner() {
       const lines = [
         [0,1,2], [3,4,5], [6,7,8], // 横
@@ -553,14 +562,14 @@
       for (let p of PLAYERS) {
         const id = p.id;
 
-        // 条件1: 1マスに同色で「大中小」が揃う
+        // 1. 同一マスに同色で「大中小」
         for (let i = 0; i < 9; i++) {
           if (boardState[i].large === id && boardState[i].medium === id && boardState[i].small === id) {
             return id;
           }
         }
 
-        // 条件2: 同サイズが3つ並ぶ (大・大・大 / 中・中・中 / 小・小・小)
+        // 2. 同サイズが3つ並ぶ
         for (let size of ['large', 'medium', 'small']) {
           for (let line of lines) {
             if (boardState[line[0]][size] === id &&
@@ -571,11 +580,9 @@
           }
         }
 
-        // 条件3: サイズ順（大中小 または 小中大）で3つ並ぶ
+        // 3. サイズ順（大中小 または 小中大）で3つ並ぶ
         for (let line of lines) {
-          // 大 -> 中 -> 小
           if (boardState[line[0]].large === id && boardState[line[1]].medium === id && boardState[line[2]].small === id) return id;
-          // 小 -> 中 -> 大
           if (boardState[line[0]].small === id && boardState[line[1]].medium === id && boardState[line[2]].large === id) return id;
         }
       }
