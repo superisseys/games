@@ -1,1 +1,602 @@
- 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>オトリオ (Otrio) - 3目並べ進化系</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-color: #f8fafc;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --yellow: #eab308;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    /* ロビー（設定画面） */
+    .screen {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hidden { display: none !important; }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+
+    .lobby-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 16px;
+      width: 100%;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .player-select-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f172a;
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+
+    .p-label {
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+    }
+
+    select {
+      background: #334155;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      outline: none;
+    }
+
+    .btn-main {
+      background: #6366f1;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      width: 100%;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-main:disabled {
+      background: #475569;
+      box-shadow: none;
+    }
+
+    /* ゲーム画面 */
+    .status-bar {
+      background: var(--card-bg);
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 1rem;
+      text-align: center;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-sub {
+      background: #475569;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    /* メイン盤面 */
+    .board-container {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .cell {
+      background: #0f172a;
+      border-radius: 12px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .cell:active { opacity: 0.8; }
+
+    /* リング（円）表現 */
+    .ring {
+      position: absolute;
+      border-style: solid;
+      border-radius: 50%;
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+
+    .ring.large { width: 80%; height: 80%; border-width: 8px; }
+    .ring.medium { width: 55%; height: 55%; border-width: 6px; }
+    .ring.small { width: 30%; height: 30%; border-width: 5px; }
+
+    /* リングの色 */
+    .color-red { border-color: var(--red); }
+    .color-blue { border-color: var(--blue); }
+    .color-green { border-color: var(--green); }
+    .color-yellow { border-color: var(--yellow); }
+
+    /* 手札（パーツ選択） */
+    .hand-area {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 8px 12px;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    .piece-select {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+    }
+
+    .piece-select.selected {
+      border-color: #f8fafc;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .piece-select.disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .piece-icon {
+      border-style: solid;
+      border-radius: 50%;
+    }
+
+    .piece-icon.large { width: 28px; height: 28px; border-width: 4px; }
+    .piece-icon.medium { width: 20px; height: 20px; border-width: 3px; }
+    .piece-icon.small { width: 12px; height: 12px; border-width: 3px; }
+
+    .piece-count { font-size: 0.75rem; font-weight: bold; }
+
+    /* モーダル */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 16px;
+      text-align: center;
+      max-width: 300px;
+      width: 80%;
+    }
+
+    .modal-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 8px; }
+    .modal-desc { font-size: 0.9rem; color: #cbd5e1; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+  <!-- 設定画面（ロビー） -->
+  <div class="screen" id="lobbyScreen">
+    <h1>⭕ Otrio (オトリオ)</h1>
+    <div class="lobby-card">
+      <div class="player-select-row">
+        <span class="p-label"><span class="dot" style="background:var(--red);"></span> P1 (赤)</span>
+        <select id="p1Type"><option value="human">人間</option><option value="cpu">CPU</option></select>
+      </div>
+      <div class="player-select-row">
+        <span class="p-label"><span class="dot" style="background:var(--blue);"></span> P2 (青)</span>
+        <select id="p2Type"><option value="human">人間</option><option value="cpu" selected>CPU</option></select>
+      </div>
+      <div class="player-select-row">
+        <span class="p-label"><span class="dot" style="background:var(--green);"></span> P3 (緑)</span>
+        <select id="p3Type"><option value="none">参加しない</option><option value="human">人間</option><option value="cpu">CPU</option></select>
+      </div>
+      <div class="player-select-row">
+        <span class="p-label"><span class="dot" style="background:var(--yellow);"></span> P4 (黄)</span>
+        <select id="p4Type"><option value="none">参加しない</option><option value="human">人間</option><option value="cpu">CPU</option></select>
+      </div>
+      <button class="btn-main" id="startBtn" onclick="startGame()">対戦開始</button>
+    </div>
+  </div>
+
+  <!-- ゲーム画面 -->
+  <div class="screen hidden" id="gameScreen">
+    <div class="status-bar">
+      <span id="turnText">P1のターン</span>
+      <button class="btn-sub" onclick="showLobby()">参戦設定へ</button>
+    </div>
+
+    <div class="board-container" id="board">
+      <!-- 3x3 cells generated via JS -->
+    </div>
+
+    <!-- 手札（サイズ選択） -->
+    <div class="hand-area" id="handArea">
+      <div class="piece-select" id="btnLarge" onclick="selectSize('large')">
+        <div class="piece-icon large" id="iconLarge"></div>
+        <span class="piece-count" id="countLarge">×3</span>
+      </div>
+      <div class="piece-select" id="btnMedium" onclick="selectSize('medium')">
+        <div class="piece-icon medium" id="iconMedium"></div>
+        <span class="piece-count" id="countMedium">×3</span>
+      </div>
+      <div class="piece-select" id="btnSmall" onclick="selectSize('small')">
+        <div class="piece-icon small" id="iconSmall"></div>
+        <span class="piece-count" id="countSmall">×3</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 勝利モーダル -->
+  <div class="modal-overlay" id="resultModal">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">WIN!</div>
+      <div class="modal-desc" id="modalDesc">メッセージ</div>
+      <button class="btn-main" onclick="resetGame()">もう一度遊ぶ</button>
+    </div>
+  </div>
+
+  <script>
+    const PLAYERS = [
+      { id: 'p1', name: 'P1 (赤)', colorClass: 'color-red', hex: 'var(--red)' },
+      { id: 'p2', name: 'P2 (青)', colorClass: 'color-blue', hex: 'var(--blue)' },
+      { id: 'p3', name: 'P3 (緑)', colorClass: 'color-green', hex: 'var(--green)' },
+      { id: 'p4', name: 'P4 (黄)', colorClass: 'color-yellow', hex: 'var(--yellow)' }
+    ];
+
+    let activePlayers = []; // 参加プレイヤーリスト
+    let turnIndex = 0;
+    let selectedSize = 'large'; // 現在選択中のパーツサイズ
+    let boardState = Array(9).fill(null).map(() => ({ large: null, medium: null, small: null }));
+    let playerHands = {};
+
+    function showLobby() {
+      document.getElementById('lobbyScreen').classList.remove('hidden');
+      document.getElementById('gameScreen').classList.add('hidden');
+    }
+
+    function startGame() {
+      activePlayers = [];
+      PLAYERS.forEach(p => {
+        const type = document.getElementById(p.id + 'Type').value;
+        if (type !== 'none') {
+          activePlayers.push({ ...p, type: type });
+        }
+      });
+
+      if (activePlayers.length < 2) {
+        alert('2人以上のプレイヤー（人間またはCPU）を設定してください。');
+        return;
+      }
+
+      document.getElementById('lobbyScreen').classList.add('hidden');
+      document.getElementById('gameScreen').classList.remove('hidden');
+
+      initBoardUI();
+      resetGame();
+    }
+
+    function initBoardUI() {
+      const boardEl = document.getElementById('board');
+      boardEl.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.onclick = () => handleCellClick(i);
+        boardEl.appendChild(cell);
+      }
+    }
+
+    function resetGame() {
+      boardState = Array(9).fill(null).map(() => ({ large: null, medium: null, small: null }));
+      playerHands = {};
+      activePlayers.forEach(p => {
+        playerHands[p.id] = { large: 3, medium: 3, small: 3 };
+      });
+
+      turnIndex = 0;
+      selectedSize = 'large';
+      document.getElementById('resultModal').classList.remove('active');
+      
+      updateTurnUI();
+      renderBoard();
+      triggerCPUTurnIfNeeded();
+    }
+
+    function selectSize(size) {
+      const p = activePlayers[turnIndex];
+      if (playerHands[p.id][size] > 0) {
+        selectedSize = size;
+        updateHandUI();
+      }
+    }
+
+    function updateTurnUI() {
+      const p = activePlayers[turnIndex];
+      const turnText = document.getElementById('turnText');
+      turnText.textContent = `${p.name} のターン`;
+      turnText.style.color = p.hex;
+
+      // 手札で最初に使用可能なサイズを選択
+      if (playerHands[p.id][selectedSize] === 0) {
+        const sizes = ['large', 'medium', 'small'];
+        selectedSize = sizes.find(s => playerHands[p.id][s] > 0) || 'large';
+      }
+
+      updateHandUI();
+    }
+
+    function updateHandUI() {
+      const p = activePlayers[turnIndex];
+      const hand = playerHands[p.id];
+
+      ['large', 'medium', 'small'].forEach(s => {
+        const btn = document.getElementById('btn' + capitalize(s));
+        const icon = document.getElementById('icon' + capitalize(s));
+        const count = document.getElementById('count' + capitalize(s));
+
+        count.textContent = `×${hand[s]}`;
+        icon.className = `piece-icon ${s} ${p.colorClass}`;
+
+        if (hand[s] === 0) {
+          btn.classList.add('disabled');
+          btn.classList.remove('selected');
+        } else {
+          btn.classList.remove('disabled');
+          btn.classList.toggle('selected', s === selectedSize);
+        }
+      });
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function handleCellClick(cellIndex) {
+      const p = activePlayers[turnIndex];
+      if (p.type === 'cpu') return; // CPUのターンはタップ無効
+
+      if (tryPlacePiece(cellIndex, selectedSize, p)) {
+        finishTurn();
+      }
+    }
+
+    function tryPlacePiece(cellIndex, size, player) {
+      // 指定サイズが空いているかチェック
+      if (boardState[cellIndex][size] === null && playerHands[player.id][size] > 0) {
+        boardState[cellIndex][size] = player.id;
+        playerHands[player.id][size]--;
+        renderBoard();
+        return true;
+      }
+      return false;
+    }
+
+    function finishTurn() {
+      const winner = checkWinner();
+      if (winner) {
+        const p = activePlayers.find(pl => pl.id === winner);
+        showModal(`${p.name} の勝利！🏆`, '見事3つのパターンを揃えました！');
+        return;
+      }
+
+      if (checkDraw()) {
+        showModal('引き分け！🤝', 'すべてのリングを置き終えました。');
+        return;
+      }
+
+      // 次のプレイヤーへ
+      turnIndex = (turnIndex + 1) % activePlayers.length;
+      updateTurnUI();
+      triggerCPUTurnIfNeeded();
+    }
+
+    function triggerCPUTurnIfNeeded() {
+      const p = activePlayers[turnIndex];
+      if (p.type === 'cpu') {
+        setTimeout(executeCPUMove, 600); // 0.6秒後に思考して配置
+      }
+    }
+
+    // AI（CPU）思考ロジック
+    function executeCPUMove() {
+      const p = activePlayers[turnIndex];
+      const validMoves = [];
+
+      // 置けるすべての組み合わせを探索
+      for (let i = 0; i < 9; i++) {
+        ['large', 'medium', 'small'].forEach(s => {
+          if (boardState[i][s] === null && playerHands[p.id][s] > 0) {
+            validMoves.push({ index: i, size: s });
+          }
+        });
+      }
+
+      if (validMoves.length === 0) {
+        finishTurn();
+        return;
+      }
+
+      // 1. 自分が1手で勝てる手があれば優先実行
+      for (let move of validMoves) {
+        boardState[move.index][move.size] = p.id;
+        if (checkWinner() === p.id) {
+          playerHands[p.id][move.size]--;
+          renderBoard();
+          finishTurn();
+          return;
+        }
+        boardState[move.index][move.size] = null; // リセット
+      }
+
+      // 2. それ以外はランダム配置
+      const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+      tryPlacePiece(randomMove.index, randomMove.size, p);
+      finishTurn();
+    }
+
+    function renderBoard() {
+      const cells = document.getElementById('board').children;
+      for (let i = 0; i < 9; i++) {
+        const cell = cells[i];
+        cell.innerHTML = '';
+
+        ['large', 'medium', 'small'].forEach(s => {
+          const playerId = boardState[i][s];
+          if (playerId) {
+            const p = PLAYERS.find(pl => pl.id === playerId);
+            const ring = document.createElement('div');
+            ring.className = `ring ${s} ${p.colorClass}`;
+            cell.appendChild(ring);
+          }
+        });
+      }
+    }
+
+    // 勝利判定
+    function checkWinner() {
+      const lines = [
+        [0,1,2], [3,4,5], [6,7,8], // 横
+        [0,3,6], [1,4,7], [2,5,8], // 縦
+        [0,4,8], [2,4,6]          // 斜め
+      ];
+
+      for (let p of PLAYERS) {
+        const id = p.id;
+
+        // 条件1: 1マスに同色で「大中小」が揃う
+        for (let i = 0; i < 9; i++) {
+          if (boardState[i].large === id && boardState[i].medium === id && boardState[i].small === id) {
+            return id;
+          }
+        }
+
+        // 条件2: 同サイズが3つ並ぶ (大・大・大 / 中・中・中 / 小・小・小)
+        for (let size of ['large', 'medium', 'small']) {
+          for (let line of lines) {
+            if (boardState[line[0]][size] === id &&
+                boardState[line[1]][size] === id &&
+                boardState[line[2]][size] === id) {
+              return id;
+            }
+          }
+        }
+
+        // 条件3: サイズ順（大中小 または 小中大）で3つ並ぶ
+        for (let line of lines) {
+          // 大 -> 中 -> 小
+          if (boardState[line[0]].large === id && boardState[line[1]].medium === id && boardState[line[2]].small === id) return id;
+          // 小 -> 中 -> 大
+          if (boardState[line[0]].small === id && boardState[line[1]].medium === id && boardState[line[2]].large === id) return id;
+        }
+      }
+
+      return null;
+    }
+
+    function checkDraw() {
+      return activePlayers.every(p => {
+        const hand = playerHands[p.id];
+        return hand.large === 0 && hand.medium === 0 && hand.small === 0;
+      });
+    }
+
+    function showModal(title, desc) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalDesc').textContent = desc;
+      document.getElementById('resultModal').classList.add('active');
+    }
+
+    window.onload = showLobby;
+  </script>
+</body>
+</html>
