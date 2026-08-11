@@ -454,14 +454,34 @@
         return;
       }
 
+      // 引き分け判定（誰も置けない状態）
       if (checkDraw()) {
-        showModal('引き分け！🤝', 'すべてのリングを置き終えました。');
+        showModal('引き分け！🤝', '置ける場所（手札または盤面）が無くなりました。');
         return;
       }
 
-      turnIndex = (turnIndex + 1) % activePlayers.length;
+      // 置ける手札があるプレイヤーを探して手番を回す
+      let attempts = 0;
+      do {
+        turnIndex = (turnIndex + 1) % activePlayers.length;
+        attempts++;
+      } while (!hasAnyValidMove(activePlayers[turnIndex]) && attempts < activePlayers.length);
+
       updateTurnUI();
       triggerCPUTurnIfNeeded();
+    }
+
+    // 該当プレイヤーが1手でも配置可能かチェック
+    function hasAnyValidMove(player) {
+      const hand = playerHands[player.id];
+      for (let i = 0; i < 9; i++) {
+        for (let s of ['large', 'medium', 'small']) {
+          if (boardState[i][s] === null && hand[s] > 0) {
+            return true;
+          }
+        }
+      }
+      return false;
     }
 
     function triggerCPUTurnIfNeeded() {
@@ -471,12 +491,10 @@
       }
     }
 
-    // ★ 強化されたCPU思考アルゴリズム（勝利＋絶対防衛）
     function executeCPUMove() {
       const p = activePlayers[turnIndex];
       const validMoves = [];
 
-      // 置けるすべての選択肢を取得
       for (let i = 0; i < 9; i++) {
         ['large', 'medium', 'small'].forEach(s => {
           if (boardState[i][s] === null && playerHands[p.id][s] > 0) {
@@ -490,7 +508,7 @@
         return;
       }
 
-      // 1. 【最優先】自分が即勝利できる手があるかチェック
+      // 1. 即勝利
       for (let move of validMoves) {
         boardState[move.index][move.size] = p.id;
         if (checkWinner() === p.id) {
@@ -499,28 +517,26 @@
           finishTurn();
           return;
         }
-        boardState[move.index][move.size] = null; // 元に戻す
+        boardState[move.index][move.size] = null;
       }
 
-      // 2. 【第2優先】他プレイヤー（人間含む全員）にリーチがあれば絶対ブロック（ディフェンス）
+      // 2. ブロック（ディフェンス）
       const opponentPlayers = activePlayers.filter(op => op.id !== p.id);
       for (let op of opponentPlayers) {
         for (let move of validMoves) {
-          // 仮想的に相手の手として置いて勝利判定が出るか見る
           boardState[move.index][move.size] = op.id;
           if (checkWinner() === op.id) {
-            // 相手が勝つ場所を発見！そこへ自分が先回りしてブロックする
             boardState[move.index][move.size] = p.id;
             playerHands[p.id][move.size]--;
             renderBoard();
             finishTurn();
             return;
           }
-          boardState[move.index][move.size] = null; // 元に戻す
+          boardState[move.index][move.size] = null;
         }
       }
 
-      // 3. 【第3優先】中央マス（インデックス4）の空きがあれば狙う
+      // 3. 中央狙い
       const centerMove = validMoves.find(m => m.index === 4);
       if (centerMove && Math.random() < 0.7) {
         tryPlacePiece(centerMove.index, centerMove.size, p);
@@ -528,7 +544,7 @@
         return;
       }
 
-      // 4. 【通常手】ランダム配置
+      // 4. 通常ランダム
       const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
       tryPlacePiece(randomMove.index, randomMove.size, p);
       finishTurn();
@@ -554,22 +570,22 @@
 
     function checkWinner() {
       const lines = [
-        [0,1,2], [3,4,5], [6,7,8], // 横
-        [0,3,6], [1,4,7], [2,5,8], // 縦
-        [0,4,8], [2,4,6]          // 斜め
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
       ];
 
       for (let p of PLAYERS) {
         const id = p.id;
 
-        // 1. 同一マスに同色で「大中小」
+        // 1. 同一マスで「大中小」
         for (let i = 0; i < 9; i++) {
           if (boardState[i].large === id && boardState[i].medium === id && boardState[i].small === id) {
             return id;
           }
         }
 
-        // 2. 同サイズが3つ並ぶ
+        // 2. 同サイズで3連
         for (let size of ['large', 'medium', 'small']) {
           for (let line of lines) {
             if (boardState[line[0]][size] === id &&
@@ -580,7 +596,7 @@
           }
         }
 
-        // 3. サイズ順（大中小 または 小中大）で3つ並ぶ
+        // 3. サイズ順（大中小 または 小中大）で3連
         for (let line of lines) {
           if (boardState[line[0]].large === id && boardState[line[1]].medium === id && boardState[line[2]].small === id) return id;
           if (boardState[line[0]].small === id && boardState[line[1]].medium === id && boardState[line[2]].large === id) return id;
@@ -590,11 +606,9 @@
       return null;
     }
 
+    // 全員が一切置けない状態を検出
     function checkDraw() {
-      return activePlayers.every(p => {
-        const hand = playerHands[p.id];
-        return hand.large === 0 && hand.medium === 0 && hand.small === 0;
-      });
+      return activePlayers.every(p => !hasAnyValidMove(p));
     }
 
     function showModal(title, desc) {
