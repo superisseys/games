@@ -55,7 +55,6 @@
       margin-bottom: 4px;
     }
 
-    /* ステータスバー（シンプル化） */
     .status-bar {
       display: flex;
       justify-content: center;
@@ -278,6 +277,7 @@
       window.addEventListener('resize', () => {
         setupCanvas();
         draw();
+        drawPreview();
       });
     }
 
